@@ -18,6 +18,14 @@ export function getS3Client(): S3Client {
       accessKeyId: env.awsAccessKeyId(),
       secretAccessKey: env.awsSecretAccessKey(),
     },
+    // SDK >= 3.730 sets these to "WHEN_SUPPORTED" by default, which makes
+    // the presigner bake a CRC32 of an empty body into the URL and S3 then
+    // rejects the real upload with a checksum-mismatch error. We don't need
+    // SDK-side checksums for browser uploads (TLS already protects integrity),
+    // so set both to "WHEN_REQUIRED" to disable the auto-checksum behavior.
+    // See https://github.com/aws/aws-sdk-js-v3/issues/6810
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
   return cachedClient;
 }
