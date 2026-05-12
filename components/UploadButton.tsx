@@ -63,12 +63,15 @@ export function UploadButton() {
       const { document, uploadUrl } = (await presignRes.json()) as PresignResponse;
       createdDocumentId = document.id;
 
-      // 2. PUT the bytes directly to S3. Content-Type must match what we
-      //    signed with, or S3 rejects with SignatureDoesNotMatch.
+      // 2. PUT the bytes directly to S3. Every header the presigner included
+      //    in X-Amz-SignedHeaders has to be sent here with the same value, or
+      //    S3 returns 403 SignatureDoesNotMatch. We sign x-amz-server-side-
+      //    encryption in lib/s3.ts so it MUST be set on the request too.
       const putRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
           "Content-Type": file.type || "application/octet-stream",
+          "x-amz-server-side-encryption": "AES256",
         },
         body: file,
       });
