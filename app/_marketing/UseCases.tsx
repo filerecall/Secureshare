@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Briefcase, Scale, Wallet, Users } from "lucide-react";
+import { Briefcase, Handshake, Scale, ShieldCheck, Users, Wallet } from "lucide-react";
 
 const useCases = [
   {
@@ -21,6 +21,11 @@ const useCases = [
     icon: Briefcase,
     title: "Consultants",
     body: "Hand clients deliverables that can be revoked the day the engagement ends.",
+  },
+  {
+    icon: Handshake,
+    title: "M&A and due diligence",
+    body: "Share data-room documents that expire the day the deal closes, or the day it doesn't.",
   },
 ];
 
@@ -59,7 +64,7 @@ export function UseCases() {
             </h2>
             <p className="mt-4 text-base text-slate-600">
               Anywhere a document leaves your perimeter, SecureShare gives you a tokenised,
-              expirable, revocable wrapper around it - without changing how your recipients work.
+              expirable, revocable wrapper around it, without changing how your recipients work.
             </p>
 
             <ul className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -75,6 +80,11 @@ export function UseCases() {
                 </li>
               ))}
             </ul>
+
+            <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+              SOC 2 alignment in progress
+            </p>
           </div>
         </div>
       </div>

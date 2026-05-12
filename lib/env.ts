@@ -11,6 +11,12 @@ export const env = {
   supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
   supabaseAnonKey: () =>
     required("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  // Server-only. Used by the recipient flow to read share_links without an
+  // authenticated user (the recipient isn't logged in). Never expose this to
+  // the browser; calling it from a client component will throw at runtime
+  // because the value isn't inlined.
+  supabaseServiceRoleKey: () =>
+    required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY),
   siteUrl: () => {
     // 1. Explicit override wins. Set NEXT_PUBLIC_SITE_URL on Vercel for
     //    production / staging so this points at your real domain.

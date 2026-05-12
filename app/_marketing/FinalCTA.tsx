@@ -20,8 +20,11 @@ export function FinalCTA() {
           Stop emailing PDFs to people you trust today,
           <span className="block text-slate-400">in case you don&apos;t tomorrow.</span>
         </h2>
+        <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
+          Free while we&apos;re in beta
+        </p>
         <p className="mx-auto mt-5 max-w-xl text-base text-slate-300">
-          Create your first secure link in under a minute. Free while we&apos;re in beta.
+          Create your first secure link in under a minute. No credit card required.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link href="/signup">

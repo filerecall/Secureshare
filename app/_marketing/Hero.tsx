@@ -53,6 +53,10 @@ export function Hero() {
                 <Check className="h-4 w-4 text-emerald-600" aria-hidden /> No credit card
               </li>
               <li className="inline-flex items-center gap-2">
+                <Check className="h-4 w-4 text-emerald-600" aria-hidden /> No recipient account
+                needed
+              </li>
+              <li className="inline-flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-600" aria-hidden /> Revoke anytime
               </li>
               <li className="inline-flex items-center gap-2">
@@ -149,7 +153,9 @@ function ProductMockup() {
           </div>
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-xs text-slate-500">Encrypted at rest · TLS in transit</span>
+            <span className="text-xs text-slate-500">
+              AES-256 encrypted at rest · TLS 1.3 in transit
+            </span>
             <span className="inline-flex h-9 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white shadow-sm">
               Create link
             </span>

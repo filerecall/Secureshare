@@ -1,17 +1,26 @@
-import { Upload, Send, ShieldOff } from "lucide-react";
+import { Lock, Send, ShieldOff, Upload } from "lucide-react";
 
-const steps = [
+interface Step {
+  n: string;
+  icon: typeof Upload;
+  title: string;
+  body: string;
+  reassurance?: string;
+}
+
+const steps: Step[] = [
   {
     n: "01",
     icon: Upload,
     title: "Upload your document",
     body: "Drop a PDF, contract, or any sensitive file. It's encrypted at rest the moment it lands.",
+    reassurance: "Files are never stored unencrypted at any point.",
   },
   {
     n: "02",
     icon: Send,
     title: "Send a secure link",
-    body: "Pick a recipient, set an expiry - by date, view count, or manual - and share the tokenised URL.",
+    body: "Pick a recipient, set an expiry by date, view count, or manual, and share the tokenised URL.",
   },
   {
     n: "03",
@@ -38,7 +47,7 @@ export function HowItWorks() {
         </div>
 
         <ol className="mt-14 grid gap-6 md:grid-cols-3">
-          {steps.map(({ n, icon: Icon, title, body }) => (
+          {steps.map(({ n, icon: Icon, title, body, reassurance }) => (
             <li
               key={n}
               className="group relative flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-slate-300 hover:shadow-card"
@@ -51,6 +60,12 @@ export function HowItWorks() {
               </div>
               <h3 className="mt-6 text-lg font-semibold text-slate-900">{title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
+              {reassurance ? (
+                <p className="mt-4 inline-flex items-start gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-100">
+                  <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span>{reassurance}</span>
+                </p>
+              ) : null}
             </li>
           ))}
         </ol>

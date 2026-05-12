@@ -1,5 +1,6 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -58,6 +59,32 @@ export async function presignDocumentUpload(opts: PresignPutOptions): Promise<st
     // Server-side encryption applied to every object regardless of bucket
     // default, so we don't rely on bucket config to be correct.
     ServerSideEncryption: "AES256",
+  });
+  return getSignedUrl(getS3Client(), cmd, {
+    expiresIn: opts.expiresInSeconds ?? 300,
+  });
+}
+
+interface PresignGetOptions {
+  key: string;
+  /** File name presented to the recipient's browser. */
+  downloadFileName: string;
+  /** Seconds before the URL expires. Default: 5 minutes. */
+  expiresInSeconds?: number;
+}
+
+/**
+ * Generate a short-lived presigned GET URL for the recipient flow. The
+ * download endpoint 302s the browser at this URL; we set Content-Disposition
+ * so the file downloads with the original filename instead of the UUID-y
+ * S3 key.
+ */
+export async function presignDocumentDownload(opts: PresignGetOptions): Promise<string> {
+  const safeFileName = opts.downloadFileName.replace(/"/g, "");
+  const cmd = new GetObjectCommand({
+    Bucket: env.awsS3Bucket(),
+    Key: opts.key,
+    ResponseContentDisposition: `attachment; filename="${safeFileName}"`,
   });
   return getSignedUrl(getS3Client(), cmd, {
     expiresIn: opts.expiresInSeconds ?? 300,
