@@ -37,4 +37,28 @@ export const env = {
   awsSecretAccessKey: () =>
     required("AWS_SECRET_ACCESS_KEY", process.env.AWS_SECRET_ACCESS_KEY),
   awsS3Bucket: () => required("AWS_S3_BUCKET", process.env.AWS_S3_BUCKET),
+
+  // Resend (transactional email)
+  resendApiKey: () => required("RESEND_API_KEY", process.env.RESEND_API_KEY),
+  resendFromEmail: () =>
+    process.env.RESEND_FROM_EMAIL || "SecureShare <no-reply@filerecall.com>",
+
+  // Stripe. Secret key is server-only; publishable key is exposed to the
+  // browser via NEXT_PUBLIC_ for the Stripe.js bundle.
+  stripeSecretKey: () => required("STRIPE_SECRET_KEY", process.env.STRIPE_SECRET_KEY),
+  stripePublishableKey: () =>
+    required("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
+  stripeWebhookSecret: () =>
+    required("STRIPE_WEBHOOK_SECRET", process.env.STRIPE_WEBHOOK_SECRET),
+  // Stripe Price IDs - one per plan/interval. Created in Stripe Dashboard
+  // and pasted into env. We deliberately resolve lazily so missing values
+  // only blow up when the relevant plan is selected.
+  stripePriceProMonthly: () =>
+    required("STRIPE_PRICE_PRO_MONTHLY", process.env.STRIPE_PRICE_PRO_MONTHLY),
+  stripePriceProAnnual: () =>
+    required("STRIPE_PRICE_PRO_ANNUAL", process.env.STRIPE_PRICE_PRO_ANNUAL),
+  stripePriceBusinessMonthly: () =>
+    required("STRIPE_PRICE_BUSINESS_MONTHLY", process.env.STRIPE_PRICE_BUSINESS_MONTHLY),
+  stripePriceBusinessAnnual: () =>
+    required("STRIPE_PRICE_BUSINESS_ANNUAL", process.env.STRIPE_PRICE_BUSINESS_ANNUAL),
 };

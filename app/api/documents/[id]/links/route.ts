@@ -1,8 +1,38 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { sendShareLinkEmail } from "@/lib/email/share-link-email";
 import { buildShareUrl, generateShareToken } from "@/lib/share-tokens";
 import type { ExpiryType, ShareLinkRow } from "@/types/database";
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // RLS scopes share_links to documents owned by the user, so we don't need
+  // a separate ownership check. An untrusted document id just returns [].
+  const { data, error } = await supabase
+    .from("share_links")
+    .select("*")
+    .eq("document_id", params.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: "Failed to load links" }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    shareLinks: (data ?? []).map((link) => ({
+      ...link,
+      url: buildShareUrl(env.siteUrl(), link.token),
+    })),
+  });
+}
 
 interface CreateShareLinkBody {
   recipientEmail: string;
@@ -68,7 +98,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const result = validate(raw);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json(
+      { error: "error" in result ? result.error : "Invalid request body" },
+      { status: 400 },
+    );
   }
   const { recipientEmail, expiryType, expiryDays } = result.value;
 
@@ -78,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // confirming the existence of other users' rows.
   const { data: document, error: docError } = await supabase
     .from("documents")
-    .select("id, status, s3_key")
+    .select("id, status, s3_key, file_name")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -116,8 +149,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Failed to create share link" }, { status: 500 });
   }
 
-  return NextResponse.json({
-    shareLink,
-    url: buildShareUrl(env.siteUrl(), shareLink.token),
+  const shareUrl = buildShareUrl(env.siteUrl(), shareLink.token);
+
+  // Fire-and-forget the recipient notification. Failure is logged inside the
+  // helper but never bubbles up; the link itself is the source of truth.
+  void sendShareLinkEmail({
+    recipientEmail,
+    senderEmail: user.email ?? "A SecureShare user",
+    documentName: document.file_name,
+    shareUrl,
+    expiryDescription: describeExpiry(expiryType, expiryDays, expiresAt),
   });
+
+  return NextResponse.json({ shareLink, url: shareUrl });
+}
+
+function describeExpiry(
+  expiryType: ExpiryType,
+  expiryDays: number | undefined,
+  expiresAt: string | null,
+): string {
+  if (expiryType === "first_view") return "Expires after the first time it's opened.";
+  if (expiryType === "days" && expiryDays && expiresAt) {
+    const when = new Date(expiresAt).toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    return `Expires in ${expiryDays} day${expiryDays === 1 ? "" : "s"} (${when}).`;
+  }
+  return "No automatic expiry. The sender can revoke at any time.";
 }

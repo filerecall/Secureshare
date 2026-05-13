@@ -1,13 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Share2 } from "lucide-react";
+import { Download, Eye, FileText, Link as LinkIcon, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ShareDialog } from "@/components/ShareDialog";
 import type { DocumentRow as DocumentRecord, DocumentStatus } from "@/types/database";
 
+export interface DocumentStats {
+  viewCount: number;
+  downloadCount: number;
+  activeLinkCount: number;
+  lastAccessedAt: string | null;
+}
+
+export interface DocumentWithStats extends DocumentRecord {
+  stats: DocumentStats;
+}
+
 interface Props {
-  document: DocumentRecord;
+  document: DocumentWithStats;
 }
 
 const statusStyles: Record<DocumentStatus, string> = {
@@ -19,10 +30,11 @@ const statusStyles: Record<DocumentStatus, string> = {
 export function DocumentRow({ document }: Props) {
   const [shareOpen, setShareOpen] = useState(false);
   const canShare = document.status === "active" && !!document.s3_key;
+  const { stats } = document;
 
   return (
     <>
-      <li className="flex items-center justify-between gap-4 px-6 py-4">
+      <li className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
             <FileText className="h-5 w-5" aria-hidden />
@@ -32,9 +44,10 @@ export function DocumentRow({ document }: Props) {
             <p className="text-xs text-slate-500">
               {formatBytes(document.file_size)} · {formatDate(document.created_at)}
             </p>
+            <DocumentStatsRow stats={stats} />
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusStyles[document.status]}`}
           >
@@ -45,7 +58,7 @@ export function DocumentRow({ document }: Props) {
             variant="secondary"
             onClick={() => setShareOpen(true)}
             disabled={!canShare}
-            title={canShare ? "Create a share link" : "Document is not shareable"}
+            title={canShare ? "Manage share links" : "Document is not shareable"}
           >
             <Share2 className="h-3.5 w-3.5" aria-hidden />
             Share
@@ -62,6 +75,35 @@ export function DocumentRow({ document }: Props) {
   );
 }
 
+function DocumentStatsRow({ stats }: { stats: DocumentStats }) {
+  const hasAnyActivity = stats.viewCount > 0 || stats.downloadCount > 0;
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+      <span
+        className="inline-flex items-center gap-1"
+        title={`${stats.activeLinkCount} active share link${stats.activeLinkCount === 1 ? "" : "s"}`}
+      >
+        <LinkIcon className="h-3 w-3" aria-hidden />
+        {stats.activeLinkCount} active
+      </span>
+      <span className="inline-flex items-center gap-1" title="Total views">
+        <Eye className="h-3 w-3" aria-hidden />
+        {stats.viewCount}
+      </span>
+      <span className="inline-flex items-center gap-1" title="Total downloads">
+        <Download className="h-3 w-3" aria-hidden />
+        {stats.downloadCount}
+      </span>
+      {hasAnyActivity && stats.lastAccessedAt ? (
+        <span className="text-slate-400">Last opened {formatRelative(stats.lastAccessedAt)}</span>
+      ) : (
+        <span className="text-slate-400">No access yet</span>
+      )}
+    </div>
+  );
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -74,4 +116,13 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const abs = Math.abs(diff);
+  if (abs < 60_000) return "just now";
+  if (abs < 3_600_000) return `${Math.round(abs / 60_000)}m ago`;
+  if (abs < 86_400_000) return `${Math.round(abs / 3_600_000)}h ago`;
+  return `${Math.round(abs / 86_400_000)}d ago`;
 }

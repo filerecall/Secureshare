@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
@@ -26,9 +27,17 @@ export function DashboardHeader({ email }: Props) {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Logo />
-        <div className="flex items-center gap-3">
+        <Link href="/dashboard" aria-label="Go to dashboard">
+          <Logo />
+        </Link>
+        <div className="flex items-center gap-2">
           <span className="hidden text-sm text-slate-600 sm:inline">{email}</span>
+          <Link href="/dashboard/settings">
+            <Button variant="ghost" size="sm" aria-label="Settings">
+              <Settings className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+          </Link>
           <Button variant="secondary" size="sm" onClick={handleLogout} loading={loading}>
             <LogOut className="h-4 w-4" aria-hidden />
             <span>Log out</span>

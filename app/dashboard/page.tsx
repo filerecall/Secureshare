@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { DocumentRow } from "@/components/DocumentRow";
+import { DocumentRow, type DocumentWithStats } from "@/components/DocumentRow";
 import { UploadButton } from "@/components/UploadButton";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow as DocumentRecord } from "@/types/database";
@@ -10,14 +10,50 @@ export const metadata = { title: "Dashboard - SecureShare" };
 // Render at request time so newly-uploaded docs appear after router.refresh().
 export const dynamic = "force-dynamic";
 
+// Shape PostgREST gives back when nesting share_links and access_events under
+// documents. RLS still applies on the joined rows so a user only sees their
+// own links + events.
+type DocumentWithJoins = DocumentRecord & {
+  share_links: Array<{
+    id: string;
+    revoked_at: string | null;
+    expires_at: string | null;
+    expiry_type: string | null;
+    first_viewed_at: string | null;
+    access_events: Array<{
+      event_type: "viewed" | "downloaded" | "blocked";
+      created_at: string;
+    }>;
+  }>;
+};
+
 export default async function DashboardPage() {
   const supabase = createClient();
+
+  // Pull documents with their share_links and access_events nested. The view
+  // count math happens in JS because Supabase's PostgREST API doesn't expose
+  // PostgreSQL aggregates directly; this is fine for the volumes M2 expects
+  // (a single user's documents). If we ever outgrow it, swap for a SQL view.
   const { data, error } = await supabase
     .from("documents")
-    .select("*")
+    .select(
+      `
+        *,
+        share_links (
+          id,
+          revoked_at,
+          expires_at,
+          expiry_type,
+          first_viewed_at,
+          access_events ( event_type, created_at )
+        )
+      `,
+    )
     .order("created_at", { ascending: false });
 
-  const docs: DocumentRecord[] = error ? [] : (data ?? []);
+  const docs: DocumentWithStats[] = error
+    ? []
+    : ((data ?? []) as unknown as DocumentWithJoins[]).map(toDocumentWithStats);
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,4 +94,50 @@ export default async function DashboardPage() {
       )}
     </div>
   );
+}
+
+function toDocumentWithStats(doc: DocumentWithJoins): DocumentWithStats {
+  let viewCount = 0;
+  let downloadCount = 0;
+  let activeLinkCount = 0;
+  let lastAccessedAt: string | null = null;
+  const now = Date.now();
+
+  for (const link of doc.share_links) {
+    const isRevoked = !!link.revoked_at;
+    const isExpired = link.expires_at != null && new Date(link.expires_at).getTime() <= now;
+    const isUsedFirstView = link.expiry_type === "first_view" && !!link.first_viewed_at;
+    if (!isRevoked && !isExpired && !isUsedFirstView) {
+      activeLinkCount += 1;
+    }
+
+    for (const event of link.access_events) {
+      if (event.event_type === "viewed") viewCount += 1;
+      if (event.event_type === "downloaded") downloadCount += 1;
+      if (event.event_type === "viewed" || event.event_type === "downloaded") {
+        if (!lastAccessedAt || event.created_at > lastAccessedAt) {
+          lastAccessedAt = event.created_at;
+        }
+      }
+    }
+  }
+
+  // Strip the joined arrays before passing to the client component, both to
+  // shrink the payload and because the client only needs the aggregates.
+  return {
+    id: doc.id,
+    user_id: doc.user_id,
+    file_name: doc.file_name,
+    file_size: doc.file_size,
+    mime_type: doc.mime_type,
+    s3_key: doc.s3_key,
+    status: doc.status,
+    created_at: doc.created_at,
+    stats: {
+      viewCount,
+      downloadCount,
+      activeLinkCount,
+      lastAccessedAt,
+    },
+  };
 }

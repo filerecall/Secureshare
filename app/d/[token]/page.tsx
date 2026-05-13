@@ -30,12 +30,12 @@ export default async function RecipientPage({ params }: PageProps) {
     // Log the block attempt so the sender can see it in the audit log later.
     // For 'not_found' tokens we have nothing to attribute the event to, so
     // we skip logging in that case.
-    if (lookup.shareLinkId) {
+    if ("shareLinkId" in lookup && lookup.shareLinkId) {
       await logAccessEvent(lookup.shareLinkId, "blocked");
     }
     return (
       <RecipientShell>
-        <BlockedCard reason={lookup.reason} />
+        <BlockedCard reason={"reason" in lookup ? lookup.reason : "not_found"} />
       </RecipientShell>
     );
   }

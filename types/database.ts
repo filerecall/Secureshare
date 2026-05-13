@@ -4,12 +4,21 @@
 export type DocumentStatus = "active" | "revoked" | "expired";
 export type ExpiryType = "days" | "first_view" | "manual";
 export type AccessEventType = "viewed" | "downloaded" | "blocked";
+export type SubscriptionPlan = "free" | "pro" | "business";
+export type SubscriptionStatus = "free" | "active" | "past_due" | "cancelled";
+export type SubscriptionInterval = "monthly" | "annual";
 
 /** Object types (not interfaces) so Rows satisfy Supabase GenericTable Row = Record<string, unknown>. */
 export type UserRow = {
   id: string;
   email: string;
   created_at: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  subscription_plan: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
+  subscription_interval: SubscriptionInterval | null;
+  subscription_current_period_end: string | null;
 };
 
 export type DocumentRow = {
@@ -61,7 +70,16 @@ export interface Database {
     Tables: {
       users: {
         Row: UserRow;
-        Insert: Optional<UserRow, "created_at">;
+        Insert: Optional<
+          UserRow,
+          | "created_at"
+          | "stripe_customer_id"
+          | "stripe_subscription_id"
+          | "subscription_plan"
+          | "subscription_status"
+          | "subscription_interval"
+          | "subscription_current_period_end"
+        >;
         Update: Partial<UserRow>;
         Relationships: [];
       };

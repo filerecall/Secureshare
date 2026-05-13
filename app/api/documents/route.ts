@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildDocumentS3Key, presignDocumentUpload } from "@/lib/s3";
-import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from "@/lib/upload-constraints";
-import type { DocumentRow } from "@/types/database";
+import { ALLOWED_MIME_TYPES } from "@/lib/upload-constraints";
+import { PLANS } from "@/lib/plans";
+import type { DocumentRow, SubscriptionPlan, SubscriptionStatus } from "@/types/database";
 
 // The AWS SDK only runs on the Node.js runtime, not edge.
 export const runtime = "nodejs";
@@ -15,7 +16,7 @@ interface CreateBody {
 
 type Validated = { ok: true; value: CreateBody } | { ok: false; error: string };
 
-function validateBody(body: unknown): Validated {
+function validateBody(body: unknown, maxFileSizeBytes: number): Validated {
   if (!body || typeof body !== "object") {
     return { ok: false, error: "Request body must be a JSON object." };
   }
@@ -28,15 +29,30 @@ function validateBody(body: unknown): Validated {
     typeof b.fileSize !== "number" ||
     !Number.isFinite(b.fileSize) ||
     b.fileSize <= 0 ||
-    b.fileSize > MAX_FILE_SIZE_BYTES
+    b.fileSize > maxFileSizeBytes
   ) {
-    const limitMb = Math.round(MAX_FILE_SIZE_BYTES / 1024 / 1024);
-    return { ok: false, error: `File size must be between 1 byte and ${limitMb} MB.` };
+    const limitMb = Math.round(maxFileSizeBytes / 1024 / 1024);
+    return { ok: false, error: `File size must be between 1 byte and ${limitMb} MB on your plan.` };
   }
   if (typeof b.mimeType !== "string" || !ALLOWED_MIME_TYPES.has(b.mimeType)) {
     return { ok: false, error: `File type "${b.mimeType}" is not supported.` };
   }
   return { ok: true, value: { fileName: b.fileName, fileSize: b.fileSize, mimeType: b.mimeType } };
+}
+
+/**
+ * Resolve the active plan for a user. We treat past_due as "still on the plan
+ * temporarily" so they don't get instantly locked out the moment a renewal
+ * payment fails; subscription_status=cancelled drops them to free.
+ */
+function activePlanFor(row: {
+  subscription_plan: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
+}): SubscriptionPlan {
+  if (row.subscription_status === "active" || row.subscription_status === "past_due") {
+    return row.subscription_plan;
+  }
+  return "free";
 }
 
 /**
@@ -59,15 +75,53 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Resolve the user's plan so we can apply the right size / count limits.
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("subscription_plan, subscription_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const plan = activePlanFor({
+    subscription_plan: userRow?.subscription_plan ?? "free",
+    subscription_status: userRow?.subscription_status ?? "free",
+  });
+  const planLimits = PLANS[plan].limits;
+
+  // Enforce max-documents (free tier: 1 file at a time).
+  if (planLimits.maxDocuments != null) {
+    const { count } = await supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("status", "active");
+
+    if (count != null && count >= planLimits.maxDocuments) {
+      return NextResponse.json(
+        {
+          error: `Your ${PLANS[plan].name} plan allows ${planLimits.maxDocuments} active file${planLimits.maxDocuments === 1 ? "" : "s"} at a time. Delete an existing file or upgrade to add more.`,
+          code: "plan_limit_documents",
+        },
+        { status: 402 },
+      );
+    }
+  }
+
   let raw: unknown;
   try {
     raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const result = validateBody(raw);
+  const result = validateBody(raw, planLimits.maxFileSizeBytes);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "error" in result ? result.error : "Request validation failed.",
+        code: "plan_limit_file_size",
+      },
+      { status: 400 },
+    );
   }
   const { fileName, fileSize, mimeType } = result.value;
 

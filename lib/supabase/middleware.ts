@@ -31,6 +31,10 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/signup";
   const isProtected = pathname.startsWith("/dashboard");
+  // Marketing pages that an already-signed-in user shouldn't see by default.
+  // Visiting / when authenticated jumps them straight to /dashboard so they
+  // don't have to click through the landing every time.
+  const isLandingForAuthedUser = pathname === "/";
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
@@ -39,7 +43,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPage) {
+  if (user && (isAuthPage || isLandingForAuthedUser)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
