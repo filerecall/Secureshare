@@ -5,7 +5,7 @@ import { UploadButton } from "@/components/UploadButton";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow as DocumentRecord } from "@/types/database";
 
-export const metadata = { title: "Dashboard - SecureShare" };
+export const metadata = { title: "Dashboard - FileRecall" };
 
 // Render at request time so newly-uploaded docs appear after router.refresh().
 export const dynamic = "force-dynamic";

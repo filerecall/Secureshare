@@ -41,7 +41,7 @@ export const env = {
   // Resend (transactional email)
   resendApiKey: () => required("RESEND_API_KEY", process.env.RESEND_API_KEY),
   resendFromEmail: () =>
-    process.env.RESEND_FROM_EMAIL || "SecureShare <no-reply@filerecall.com>",
+    process.env.RESEND_FROM_EMAIL || "FileRecall <no-reply@filerecall.com>",
 
   // Stripe. Secret key is server-only; publishable key is exposed to the
   // browser via NEXT_PUBLIC_ for the Stripe.js bundle.

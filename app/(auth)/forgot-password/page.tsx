@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
-export const metadata = { title: "Reset password - SecureShare" };
+export const metadata = { title: "Reset password - FileRecall" };
 
 export default function ForgotPasswordPage() {
   return (

@@ -3,10 +3,9 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { env } from "@/lib/env";
 import { PLANS } from "@/lib/plans";
 import { getS3Client, presignDocumentDownload } from "@/lib/s3";
+import { getSenderPlan } from "@/lib/sender-plan";
 import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { watermarkPdf } from "@/lib/watermark";
-import type { SubscriptionPlan, SubscriptionStatus } from "@/types/database";
 
 // AWS SDK + pdf-lib need Node runtime. We also fetch + transform the PDF
 // here on Pro+ plans, so don't run on edge.
@@ -52,24 +51,6 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
     downloadFileName: document.file_name,
   });
   return NextResponse.redirect(url, { status: 302 });
-}
-
-async function getSenderPlan(userId: string): Promise<SubscriptionPlan> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("users")
-    .select("subscription_plan, subscription_status")
-    .eq("id", userId)
-    .maybeSingle<{
-      subscription_plan: SubscriptionPlan;
-      subscription_status: SubscriptionStatus;
-    }>();
-
-  if (!data) return "free";
-  if (data.subscription_status === "active" || data.subscription_status === "past_due") {
-    return data.subscription_plan;
-  }
-  return "free";
 }
 
 async function streamWatermarkedPdf(opts: {

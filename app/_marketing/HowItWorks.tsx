@@ -54,7 +54,7 @@ export function HowItWorks() {
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-slate-400">{n}</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white">
                   <Icon className="h-5 w-5" aria-hidden />
                 </div>
               </div>

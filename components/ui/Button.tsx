@@ -12,22 +12,25 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
+// Pill-shape (rounded-full) + semibold weight matches the filerecall.com
+// marketing site buttons. Sizes raised slightly (px-5/6) so the pill shape
+// reads correctly without looking cramped.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition " +
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 " +
-  "focus-visible:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed";
+  "focus-visible:ring-brand-ring disabled:opacity-50 disabled:cursor-not-allowed";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-slate-900 text-white hover:bg-slate-800 shadow-sm",
+  primary: "bg-brand text-white hover:bg-brand-hover shadow-sm",
   secondary: "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50",
   ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
   danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-11 px-5 text-base",
+  sm: "h-8 px-4 text-sm",
+  md: "h-10 px-5 text-sm",
+  lg: "h-12 px-7 text-base",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

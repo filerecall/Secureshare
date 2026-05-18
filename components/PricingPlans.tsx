@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PLANS, PLAN_ORDER, formatPrice } from "@/lib/plans";
+import { normalisePlanParam, parsePlanParam } from "@/lib/plan-param";
 import type { SubscriptionInterval, SubscriptionPlan } from "@/types/database";
 
 interface Props {
@@ -14,14 +15,33 @@ interface Props {
 
 export function PricingPlans({ isAuthenticated }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [interval, setInterval] = useState<SubscriptionInterval>("monthly");
   const [startingCheckoutFor, setStartingCheckoutFor] = useState<SubscriptionPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // If the user landed here from /signup?plan=X (or directly with ?plan=X),
+  // kick off Stripe Checkout for the paid plan automatically. Free plan
+  // means there's nothing to do here, so we just leave them on the page.
+  // The auto-start runs ONCE on mount and only when authenticated.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    if (!isAuthenticated) return;
+    const plan = parsePlanParam(searchParams.get("plan"));
+    if (!plan || plan === "free") return;
+    const { internal } = normalisePlanParam(plan);
+    if (internal === "free") return;
+    autoStartedRef.current = true;
+    void startCheckout(internal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
   async function startCheckout(plan: Exclude<SubscriptionPlan, "free">) {
     if (!isAuthenticated) {
-      // Send unauthenticated users to signup with a memo so we can resume.
-      router.push(`/signup?next=${encodeURIComponent(`/pricing?plan=${plan}`)}`);
+      // Send unauthenticated users to signup; the plan param is what the
+      // signup flow uses to route them back to checkout after they auth.
+      router.push(`/signup?plan=${plan}`);
       return;
     }
 
@@ -55,7 +75,7 @@ export function PricingPlans({ isAuthenticated }: Props) {
             type="button"
             onClick={() => setInterval(opt)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-              interval === opt ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+              interval === opt ? "bg-brand text-white" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             {opt === "monthly" ? "Monthly" : "Annual"}

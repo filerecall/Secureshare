@@ -16,7 +16,7 @@ export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): P
   const pdf = await PDFDocument.load(input, { ignoreEncryption: true });
   const helvetica = await pdf.embedFont(StandardFonts.Helvetica);
 
-  const stamp = `SecureShare · ${opts.recipientEmail} · ${formatTimestamp(opts.accessedAt)}`;
+  const stamp = `FileRecall · ${opts.recipientEmail} · ${formatTimestamp(opts.accessedAt)}`;
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();

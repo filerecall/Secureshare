@@ -67,8 +67,8 @@ export function Features() {
               key={title}
               className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-slate-300"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                <Icon className="h-5 w-5" aria-hidden />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-white shadow-sm shadow-brand/30">
+                <Icon className="h-7 w-7" aria-hidden />
               </div>
               <h3 className="mt-5 text-base font-semibold text-slate-900">{title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>

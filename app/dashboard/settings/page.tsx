@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Settings - SecureShare" };
+export const metadata: Metadata = { title: "Settings - FileRecall" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {

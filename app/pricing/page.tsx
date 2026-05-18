@@ -7,8 +7,8 @@ import { PLANS, PLAN_ORDER } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Pricing - SecureShare",
-  description: "Choose a SecureShare plan that fits how you share documents.",
+  title: "Pricing - FileRecall",
+  description: "Choose a FileRecall plan that fits how you share documents.",
 };
 
 export const dynamic = "force-dynamic";
@@ -118,7 +118,7 @@ export default async function PricingPage({
       </main>
 
       <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} SecureShare
+        © {new Date().getFullYear()} FileRecall
       </footer>
     </div>
   );

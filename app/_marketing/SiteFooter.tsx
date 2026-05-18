@@ -7,7 +7,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-2">
           <Logo size="sm" />
           <p className="text-xs text-slate-500">
-            © {new Date().getFullYear()} SecureShare. All rights reserved.
+            © {new Date().getFullYear()} FileRecall. All rights reserved.
           </p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">

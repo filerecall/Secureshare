@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { LoginForm } from "./LoginForm";
 
-export const metadata = { title: "Log in - SecureShare" };
+export const metadata = { title: "Log in - FileRecall" };
 
 export default function LoginPage({
   searchParams,
@@ -13,7 +13,7 @@ export default function LoginPage({
     <Card>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
-        <p className="mt-1 text-sm text-slate-600">Log in to your SecureShare account.</p>
+        <p className="mt-1 text-sm text-slate-600">Log in to your FileRecall account.</p>
       </div>
       <LoginForm redirectTo={searchParams.redirectTo} />
       <p className="mt-6 text-center text-sm text-slate-600">

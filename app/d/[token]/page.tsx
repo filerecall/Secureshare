@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { Download, FileText, Lock, ShieldOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Logo } from "@/components/Logo";
+import { getSenderPlan, shouldShowFreeBranding } from "@/lib/sender-plan";
 import {
   logAccessEvent,
   lookupShareLink,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/share-links";
 
 export const metadata: Metadata = {
-  title: "Secure document - SecureShare",
+  title: "Secure document - FileRecall",
   // Recipient pages should never appear in search.
   robots: { index: false, follow: false },
 };
@@ -54,8 +55,13 @@ export default async function RecipientPage({ params }: PageProps) {
   await markFirstViewed(shareLink);
   await logAccessEvent(shareLink.id, "viewed");
 
+  // Free-tier senders get a "Sent via FileRecall" footer shown to recipients
+  // as a soft upsell. Paid tiers don't (they pay to remove the branding).
+  const senderPlan = await getSenderPlan(document.user_id);
+  const showFreeBranding = shouldShowFreeBranding(senderPlan);
+
   return (
-    <RecipientShell>
+    <RecipientShell freeBranding={showFreeBranding}>
       <Card className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
@@ -79,7 +85,7 @@ export default async function RecipientPage({ params }: PageProps) {
 
         <a
           href={`/api/d/${shareLink.token}/download`}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-7 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2"
         >
           <Download className="h-4 w-4" aria-hidden />
           Download document
@@ -94,15 +100,34 @@ export default async function RecipientPage({ params }: PageProps) {
   );
 }
 
-function RecipientShell({ children }: { children: React.ReactNode }) {
+function RecipientShell({
+  children,
+  freeBranding = false,
+}: {
+  children: React.ReactNode;
+  freeBranding?: boolean;
+}) {
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50">
       <header className="px-4 py-6 sm:px-6">
         <Logo />
       </header>
-      <main className="flex flex-1 items-start justify-center px-4 pb-16 sm:items-center sm:px-6">
+      <main className="flex flex-1 items-start justify-center px-4 pb-8 sm:items-center sm:px-6">
         <div className="w-full max-w-md">{children}</div>
       </main>
+      {freeBranding ? (
+        <footer className="px-4 pb-6 text-center sm:px-6">
+          <a
+            href="https://filerecall.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700"
+          >
+            Sent via <span className="font-semibold text-slate-700">FileRecall</span> -
+            secure document delivery
+          </a>
+        </footer>
+      ) : null}
     </div>
   );
 }

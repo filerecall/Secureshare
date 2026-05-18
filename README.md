@@ -1,4 +1,4 @@
-# SecureShare
+# FileRecall
 
 A lean SaaS for secure document delivery. Users upload documents, send tokenised secure links to recipients, and can revoke or expire access at any time. This repository is the **Milestone 1** foundation: authentication, protected dashboard shell, and the underlying database schema for the full product.
 

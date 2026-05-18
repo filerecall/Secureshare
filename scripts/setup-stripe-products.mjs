@@ -19,7 +19,7 @@ const SETUP_TAG = "secureshare-setup-v1";
 const PRODUCTS = [
   {
     key: "pro",
-    name: "SecureShare Pro",
+    name: "FileRecall Pro",
     description:
       "For freelancers, lawyers, accountants, consultants, and creators. Unlimited files, watermarking, full analytics.",
     monthlyCents: 900,
@@ -28,7 +28,7 @@ const PRODUCTS = [
   },
   {
     key: "business",
-    name: "SecureShare Business",
+    name: "FileRecall Business",
     description:
       "Teams that need shared dashboards, audit logs, custom branding, and higher file limits.",
     monthlyCents: 2900,

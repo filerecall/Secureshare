@@ -8,14 +8,28 @@ import { FormMessage } from "@/components/ui/FormMessage";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { env } from "@/lib/env";
+import { normalisePlanParam, type PlanParam } from "@/lib/plan-param";
 
-export function SignupForm() {
+interface Props {
+  /** Plan the user selected on the marketing site. Drives post-signup routing. */
+  preselectedPlan?: PlanParam;
+}
+
+export function SignupForm({ preselectedPlan }: Props) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Where to send the user after they're authenticated. Free / no-plan goes
+  // straight to the dashboard. Paid plans go to /pricing?plan=X which the
+  // pricing page uses to kick off Stripe Checkout in one click.
+  const postAuthPath =
+    preselectedPlan && preselectedPlan !== "free"
+      ? `/pricing?plan=${preselectedPlan}`
+      : "/dashboard";
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,7 +46,9 @@ export function SignupForm() {
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${env.siteUrl()}/dashboard` },
+      // Preserve the plan in the post-confirmation redirect URL so the
+      // pricing-page handoff still works after the email-confirmation flow.
+      options: { emailRedirectTo: `${env.siteUrl()}${postAuthPath}` },
     });
 
     if (authError) {
@@ -43,12 +59,16 @@ export function SignupForm() {
 
     // If Supabase requires email confirmation, no session is returned.
     if (!data.session) {
-      setInfo("Check your inbox to confirm your email, then log in.");
+      setInfo(
+        preselectedPlan && preselectedPlan !== "free"
+          ? `Check your inbox to confirm your email. You'll be taken to checkout for the ${normalisePlanParam(preselectedPlan).label} plan once confirmed.`
+          : "Check your inbox to confirm your email, then log in.",
+      );
       setLoading(false);
       return;
     }
 
-    router.replace("/dashboard");
+    router.replace(postAuthPath);
     router.refresh();
   }
 

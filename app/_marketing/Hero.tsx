@@ -25,8 +25,13 @@ export function Hero() {
             </span>
 
             <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Share sensitive documents
-              <span className="block text-slate-500">without losing control.</span>
+              Share sensitive documents{" "}
+              {/* Highlighted phrase uses the brand purple-to-peach gradient
+                  as a text fill (background-clip: text). Matches the gradient
+                  treatment on filerecall.com landing-page highlights. */}
+              <span className="block bg-brand-text-gradient bg-clip-text text-transparent">
+                without losing control.
+              </span>
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
@@ -156,7 +161,7 @@ function ProductMockup() {
             <span className="text-xs text-slate-500">
               AES-256 encrypted at rest · TLS 1.3 in transit
             </span>
-            <span className="inline-flex h-9 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white shadow-sm">
+            <span className="inline-flex h-9 items-center rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-sm">
               Create link
             </span>
           </div>

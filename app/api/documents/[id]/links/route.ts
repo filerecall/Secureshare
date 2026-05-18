@@ -156,7 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // sender can still copy the URL manually. We just tell them.
   const emailResult = await sendShareLinkEmail({
     recipientEmail,
-    senderEmail: user.email ?? "A SecureShare user",
+    senderEmail: user.email ?? "A FileRecall user",
     documentName: document.file_name,
     shareUrl,
     expiryDescription: describeExpiry(expiryType, expiryDays, expiresAt),

@@ -1,4 +1,4 @@
--- SecureShare - initial schema
+-- FileRecall - initial schema
 -- Run against a fresh Supabase project (SQL editor or `supabase db push`).
 -- All PKs are UUID. RLS is enabled on every table.
 

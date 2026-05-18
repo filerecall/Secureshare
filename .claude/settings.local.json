@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:www.zego.com)"
+      "WebFetch(domain:www.zego.com)",
+      "WebFetch(domain:filerecall.com)",
+      "Bash(extract-text \"C:/Users/HELLO/Downloads/Johnnie.docx\")",
+      "Bash(pandoc --version)",
+      "Bash(python -c \"import docx; print\\('docx available'\\)\")",
+      "Bash(python -m pip install python-docx)"
     ]
   }
 }

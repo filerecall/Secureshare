@@ -45,7 +45,7 @@ export async function sendShareLinkEmail(
     const { data, error } = await resend.emails.send({
       from: env.resendFromEmail(),
       to: opts.recipientEmail,
-      subject: `${opts.senderEmail} shared a document with you on SecureShare`,
+      subject: `${opts.senderEmail} shared a document with you on FileRecall`,
       html: renderShareLinkHtml(opts),
       text: renderShareLinkText(opts),
     });
@@ -106,7 +106,7 @@ function renderShareLinkHtml({
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:white;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
           <tr>
             <td style="padding:32px 28px 8px;">
-              <p style="margin:0;color:#64748b;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;">SecureShare</p>
+              <p style="margin:0;color:#64748b;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;">FileRecall</p>
               <h1 style="margin:16px 0 0;color:#0f172a;font-size:20px;line-height:1.4;font-weight:600;">
                 ${escapeHtml(senderEmail)} shared a document with you
               </h1>
@@ -137,7 +137,7 @@ function renderShareLinkHtml({
                 The link is tokenised and only works for the recipient address above. If you weren't expecting this, you can safely ignore the email.
               </p>
               <p style="margin:16px 0 0;color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0;padding-top:14px;">
-                SecureShare · AES-256 encrypted at rest · TLS 1.3 in transit
+                FileRecall · AES-256 encrypted at rest · TLS 1.3 in transit
               </p>
             </td>
           </tr>
@@ -156,7 +156,7 @@ function renderShareLinkText({
   expiryDescription,
 }: SendShareLinkEmailOptions): string {
   return [
-    `${senderEmail} shared a document with you on SecureShare.`,
+    `${senderEmail} shared a document with you on FileRecall.`,
     "",
     `Document: ${documentName}`,
     expiryDescription,

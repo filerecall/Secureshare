@@ -4,7 +4,7 @@ import { Quote } from "lucide-react";
 // role, and company logo before going to production marketing.
 const TESTIMONIAL = {
   quote:
-    "We used to email NDAs as PDF attachments and hope. SecureShare gives us a paper trail, an expiry, and a kill switch. It's the first tool I onboard every new hire onto.",
+    "We used to email NDAs as PDF attachments and hope. FileRecall gives us a paper trail, an expiry, and a kill switch. It's the first tool I onboard every new hire onto.",
   name: "Maya Patel",
   role: "Head of Legal Operations",
   company: "Northwind Capital",

@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
-export const metadata = { title: "Set a new password - SecureShare" };
+export const metadata = { title: "Set a new password - FileRecall" };
 
 export default function ResetPasswordPage() {
   return (

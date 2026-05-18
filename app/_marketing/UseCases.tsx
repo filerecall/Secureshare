@@ -63,7 +63,7 @@ export function UseCases() {
               Teams that share what matters.
             </h2>
             <p className="mt-4 text-base text-slate-600">
-              Anywhere a document leaves your perimeter, SecureShare gives you a tokenised,
+              Anywhere a document leaves your perimeter, FileRecall gives you a tokenised,
               expirable, revocable wrapper around it, without changing how your recipients work.
             </p>
 
