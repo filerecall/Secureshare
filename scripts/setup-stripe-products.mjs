@@ -14,25 +14,30 @@
 
 import Stripe from "stripe";
 
-const SETUP_TAG = "secureshare-setup-v1";
+// Bumped from v1 because the plans were renamed and currency changed from
+// AUD to USD. v1 products + AUD prices are now legacy - archive them in
+// the Stripe dashboard if you want a clean slate.
+const SETUP_TAG = "filerecall-setup-v2";
 
 const PRODUCTS = [
   {
     key: "pro",
-    name: "FileRecall Pro",
+    name: "FileRecall Professional",
     description:
-      "For freelancers, lawyers, accountants, consultants, and creators. Unlimited files, watermarking, full analytics.",
-    monthlyCents: 900,
-    annualCents: 9000,
+      "For freelancers, lawyers, accountants, consultants, and creators. " +
+      "Up to 100 active files, watermarking, priority support.",
+    monthlyCents: 1500, // $15
+    annualCents: 14400, // $144 (20% off vs 12 x $15)
     envPrefix: "PRO",
   },
   {
     key: "business",
-    name: "FileRecall Business",
+    name: "FileRecall Team",
     description:
-      "Teams that need shared dashboards, audit logs, custom branding, and higher file limits.",
-    monthlyCents: 2900,
-    annualCents: 29000,
+      "For teams that need shared dashboards and audit logs. " +
+      "Unlimited files, larger storage, priority response time.",
+    monthlyCents: 5900, // $59
+    annualCents: 56600, // $566 (20% off vs 12 x $59, rounded)
     envPrefix: "BUSINESS",
   },
 ];
@@ -82,7 +87,7 @@ async function findOrCreatePrice(product, interval, unitAmountCents) {
   });
   const match = prices.data.find(
     (p) =>
-      p.currency === "aud" &&
+      p.currency === "usd" &&
       p.unit_amount === unitAmountCents &&
       p.recurring?.interval === interval,
   );
@@ -92,7 +97,7 @@ async function findOrCreatePrice(product, interval, unitAmountCents) {
   }
   const price = await stripe.prices.create({
     product: product.id,
-    currency: "aud",
+    currency: "usd",
     unit_amount: unitAmountCents,
     recurring: { interval },
     metadata: { setup_tag: SETUP_TAG },

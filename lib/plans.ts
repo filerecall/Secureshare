@@ -26,35 +26,49 @@ export interface PlanDefinition {
   /** Whether the user can subscribe via Checkout. Free = no Stripe involved. */
   payable: boolean;
   prices: {
-    monthly: { amount: number; currency: "AUD" };
-    annual: { amount: number; currency: "AUD" };
+    monthly: { amount: number; currency: "USD" };
+    annual: { amount: number; currency: "USD" };
   };
   features: string[];
   limits: PlanLimits;
 }
 
+// Pricing per client spec (Johnnie.docx):
+//   Free / Lead Generator: $0
+//   Professional:          $15/mo, $144/yr (20% off vs 12x monthly)
+//   Team:                  $59/mo, $566/yr (20% off vs 12x monthly, rounded)
+//
+// Feature lists only include things that are actually enforced in code.
+// Spec items not yet built (password protection, branded download pages,
+// storage quotas, team accounts, admin controls, custom branding, etc.)
+// are M3 work and intentionally omitted to keep the page honest.
 export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
   free: {
     id: "free",
     name: "Free",
-    tagline: "Try the product. Push to paid when limits bite.",
+    tagline: "Try FileRecall. Upgrade when the limits bite.",
     payable: false,
     prices: {
-      monthly: { amount: 0, currency: "AUD" },
-      annual: { amount: 0, currency: "AUD" },
+      monthly: { amount: 0, currency: "USD" },
+      annual: { amount: 0, currency: "USD" },
     },
     features: [
-      "1 file at a time",
+      "Up to 5 active files",
       "Max file size: 25 MB",
       "Tokenised secure links",
       "Expiry controls (date or first-view)",
       "Instant revoke",
-      "View and download tracking",
+      "PDF watermarking",
+      "Basic analytics (views + downloads)",
+      "FileRecall branding on recipient pages",
     ],
     limits: {
-      maxDocuments: 1,
+      // Spec: "3-5 recalled files per month". Enforced as total active
+      // documents (5 cap). Monthly rolling-window enforcement is M3.
+      maxDocuments: 5,
       maxFileSizeBytes: 25 * MB,
-      watermarking: false,
+      // Spec includes watermarking on free tier, so it's enabled here too.
+      watermarking: true,
       downloadControl: false,
       customBranding: false,
       teamAccounts: false,
@@ -63,25 +77,27 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
   },
   pro: {
     id: "pro",
-    name: "Pro",
+    name: "Professional",
     tagline: "For freelancers, lawyers, accountants, consultants, and creators.",
     payable: true,
     prices: {
-      monthly: { amount: 9_00, currency: "AUD" },
-      annual: { amount: 90_00, currency: "AUD" },
+      // $15 monthly, $144 annually (20% off vs 12 x $15 = $180).
+      monthly: { amount: 15_00, currency: "USD" },
+      annual: { amount: 144_00, currency: "USD" },
     },
     features: [
       "Everything in Free, plus:",
-      "Unlimited files",
+      "Up to 100 active files",
       "Max file size: 250 MB",
-      "Automatic PDF watermarking on downloads",
+      "Email notifications to recipients",
       "Priority email support",
     ],
     limits: {
-      maxDocuments: null,
+      // Spec: "100 recalled files/month". Enforced as 100-file active cap.
+      maxDocuments: 100,
       maxFileSizeBytes: 250 * MB,
       watermarking: true,
-      downloadControl: true,
+      downloadControl: false,
       customBranding: false,
       teamAccounts: false,
       apiAccess: false,
@@ -89,26 +105,29 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
   },
   business: {
     id: "business",
-    name: "Business",
-    tagline: "Everything in Pro, plus team and audit features.",
+    name: "Team",
+    tagline: "For teams that need shared dashboards and audit logs.",
     payable: true,
     prices: {
-      monthly: { amount: 29_00, currency: "AUD" },
-      annual: { amount: 290_00, currency: "AUD" },
+      // $59 monthly, $566 annually (20% off vs 12 x $59 = $708, rounded
+      // from $566.40 for a cleaner display).
+      monthly: { amount: 59_00, currency: "USD" },
+      annual: { amount: 566_00, currency: "USD" },
     },
     features: [
-      "Everything in Pro, plus:",
+      "Everything in Professional, plus:",
+      "Unlimited files",
       "Max file size: 500 MB",
-      "Escalated support response time",
+      "Priority response time",
     ],
     limits: {
       maxDocuments: null,
       maxFileSizeBytes: 500 * MB,
       watermarking: true,
-      downloadControl: true,
-      customBranding: true,
-      teamAccounts: true,
-      apiAccess: false, // marked "future" by client; flip to true in M3
+      downloadControl: false,
+      customBranding: false,
+      teamAccounts: false,
+      apiAccess: false,
     },
   },
 };
@@ -116,7 +135,7 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
 export const PLAN_ORDER: SubscriptionPlan[] = ["free", "pro", "business"];
 export const INTERVAL_ORDER: SubscriptionInterval[] = ["monthly", "annual"];
 
-export function formatPrice(amountCents: number, currency: "AUD"): string {
+export function formatPrice(amountCents: number, currency: "USD"): string {
   if (amountCents === 0) return "Free";
   const amount = amountCents / 100;
   return `${currency} $${amount.toFixed(amount % 1 === 0 ? 0 : 2)}`;

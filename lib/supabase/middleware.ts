@@ -31,10 +31,15 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/signup";
   const isProtected = pathname.startsWith("/dashboard");
-  // Marketing pages that an already-signed-in user shouldn't see by default.
-  // Visiting / when authenticated jumps them straight to /dashboard so they
-  // don't have to click through the landing every time.
-  const isLandingForAuthedUser = pathname === "/";
+  // The root `/` is currently hidden because the public marketing site
+  // lives on WordPress at filerecall.com. The app sits at app.filerecall.com
+  // and we don't want a competing landing page here. Logged-out visitors
+  // go to /login, logged-in visitors to /dashboard.
+  //
+  // To bring the in-app landing page back later, delete this `isLanding`
+  // branch and the marketing components in `app/_marketing/` are still in
+  // place ready to render.
+  const isLanding = pathname === "/";
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
@@ -43,7 +48,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (isAuthPage || isLandingForAuthedUser)) {
+  if (isLanding) {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/dashboard" : "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
