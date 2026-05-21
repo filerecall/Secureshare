@@ -71,7 +71,7 @@ export function UploadButton() {
         method: "PUT",
         headers: {
           "Content-Type": file.type || "application/octet-stream",
-          "x-amz-server-side-encryption": "AES256",
+          "x-amz-server-side-encryption": "AES-256",
         },
         body: file,
       });
