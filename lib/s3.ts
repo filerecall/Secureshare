@@ -50,20 +50,18 @@ interface PresignPutOptions {
  * Generate a short-lived presigned PUT URL the browser uses to upload
  * directly to S3.
  *
- * Note: we deliberately do NOT specify ServerSideEncryption here. The
- * bucket has default encryption enabled (AES-256 SSE-S3) which applies
- * automatically to every object. Including SSE on the command forces the
- * SDK to add it to SignedHeaders, which means the client has to send the
- * exact matching header value byte-for-byte or signature verification
- * fails. That coordination point has been a source of repeated 403s and
- * isn't worth the trouble when bucket-default encryption gives us the
- * same outcome with zero client-side concerns.
+ * ServerSideEncryption is set on the command so SSE-S3 is enforced at
+ * upload time. This also satisfies bucket policies that deny uploads
+ * without an explicit x-amz-server-side-encryption header. The browser
+ * MUST send the exact same header value (literal string "AES256", no
+ * hyphen) or the signature comparison fails - see UploadButton.tsx.
  */
 export async function presignDocumentUpload(opts: PresignPutOptions): Promise<string> {
   const cmd = new PutObjectCommand({
     Bucket: env.awsS3Bucket(),
     Key: opts.key,
     ContentType: opts.contentType,
+    ServerSideEncryption: "AES256",
   });
   return getSignedUrl(getS3Client(), cmd, {
     expiresIn: opts.expiresInSeconds ?? 300,
