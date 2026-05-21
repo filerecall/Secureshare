@@ -63,17 +63,15 @@ export function UploadButton() {
       const { document, uploadUrl } = (await presignRes.json()) as PresignResponse;
       createdDocumentId = document.id;
 
-      // 2. PUT the bytes directly to S3. Every header the presigner included
-      //    in X-Amz-SignedHeaders has to be sent here with the same value, or
-      //    S3 returns 403 SignatureDoesNotMatch. We sign x-amz-server-side-
-      //    encryption in lib/s3.ts so it MUST be set on the request too.
-      //    AWS expects the literal string "AES256" (no hyphen) for this value;
-      //    "AES-256" silently breaks the signature match.
+      // 2. PUT the bytes directly to S3. The presigner in lib/s3.ts no longer
+      //    signs an SSE header (the bucket has default encryption enabled),
+      //    so the only thing the browser needs to send is the Content-Type.
+      //    Bucket-default encryption still applies AES-256 SSE-S3 to every
+      //    object regardless of what the client sends.
       const putRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
           "Content-Type": file.type || "application/octet-stream",
-          "x-amz-server-side-encryption": "AES256",
         },
         body: file,
       });
