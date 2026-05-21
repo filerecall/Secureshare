@@ -67,11 +67,13 @@ export function UploadButton() {
       //    in X-Amz-SignedHeaders has to be sent here with the same value, or
       //    S3 returns 403 SignatureDoesNotMatch. We sign x-amz-server-side-
       //    encryption in lib/s3.ts so it MUST be set on the request too.
+      //    AWS expects the literal string "AES256" (no hyphen) for this value;
+      //    "AES-256" silently breaks the signature match.
       const putRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
           "Content-Type": file.type || "application/octet-stream",
-          "x-amz-server-side-encryption": "AES-256",
+          "x-amz-server-side-encryption": "AES256",
         },
         body: file,
       });
