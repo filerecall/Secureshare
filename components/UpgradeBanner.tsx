@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 /**
  * Warning-styled upgrade banner shown across the top of the dashboard for
- * users on the Free plan. A single "View plans" button takes them to the
- * pricing page, where they pick and subscribe to a plan.
+ * users on the Free plan. A single, prominent two-line CTA takes them to
+ * the pricing page to pick and subscribe to a plan.
  *
  * Rendered only for free-tier users - the dashboard decides whether to show it.
  */
@@ -25,10 +25,16 @@ export function UpgradeBanner() {
           </div>
         </div>
 
-        <Link href="/pricing" className="shrink-0">
-          <Button className="w-full sm:w-auto">
-            View plans
-            <ArrowRight className="h-4 w-4" aria-hidden />
+        <Link href="/pricing" className="shrink-0 sm:w-auto">
+          {/* Larger two-line CTA: emphatic "UPGRADE NOW" with the action
+              ("View plans") beneath it. h-auto + py override the default
+              single-line button height so both lines sit comfortably. */}
+          <Button
+            size="lg"
+            className="h-auto w-full flex-col gap-0.5 px-10 py-3 leading-tight sm:w-auto"
+          >
+            <span className="text-sm font-extrabold uppercase tracking-wider">Upgrade now</span>
+            <span className="text-xs font-medium text-white/85">View plans</span>
           </Button>
         </Link>
       </div>
