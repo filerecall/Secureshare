@@ -1,6 +1,7 @@
 import { Eye, FileUp, Send, UploadCloud } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DocumentRow, type DocumentWithStats } from "@/components/DocumentRow";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { UploadButton } from "@/components/UploadButton";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow as DocumentRecord } from "@/types/database";
@@ -55,8 +56,32 @@ export default async function DashboardPage() {
     ? []
     : ((data ?? []) as unknown as DocumentWithJoins[]).map(toDocumentWithStats);
 
+  // Resolve the user's effective plan so we can show the upgrade banner only
+  // to free-tier users. A paid plan only counts when the subscription is
+  // active or past_due; anything else is effectively free.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let isFreePlan = true;
+  if (user) {
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("subscription_plan, subscription_status")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (
+      userRow &&
+      userRow.subscription_plan !== "free" &&
+      (userRow.subscription_status === "active" || userRow.subscription_status === "past_due")
+    ) {
+      isFreePlan = false;
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      {isFreePlan ? <UpgradeBanner /> : null}
+
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold text-slate-900">Your documents</h1>
