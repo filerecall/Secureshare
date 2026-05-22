@@ -19,6 +19,12 @@ export interface PlanLimits {
   apiAccess: boolean;
 }
 
+/** A single bullet on a pricing card. included=false renders as a muted "X". */
+export interface PlanFeature {
+  label: string;
+  included: boolean;
+}
+
 export interface PlanDefinition {
   id: SubscriptionPlan;
   name: string;
@@ -29,46 +35,43 @@ export interface PlanDefinition {
     monthly: { amount: number; currency: "USD" };
     annual: { amount: number; currency: "USD" };
   };
-  features: string[];
+  features: PlanFeature[];
   limits: PlanLimits;
 }
 
-// Pricing per client spec (Johnnie.docx):
-//   Free / Lead Generator: $0
-//   Professional:          $15/mo, $144/yr (20% off vs 12x monthly)
-//   Team:                  $59/mo, $566/yr (20% off vs 12x monthly, rounded)
+// Pricing per client spec: Free $0 / Pro $9 / Business $29 (monthly).
+// Annual = 20% off 12x monthly.
 //
-// Feature lists only include things that are actually enforced in code.
-// Spec items not yet built (password protection, branded download pages,
-// storage quotas, team accounts, admin controls, custom branding, etc.)
-// are M3 work and intentionally omitted to keep the page honest.
+// IMPORTANT: the limits block (maxDocuments, maxFileSizeBytes, watermarking)
+// is what's actually ENFORCED in code. Several feature bullets below
+// (password protection, download blocking, custom access message, team
+// seats, shared dashboard, audit log UI, IP allow/deny, custom branding)
+// are marketing copy from the client's pricing design and are NOT yet
+// enforced - they're M3 work. Listed here because the client asked for the
+// pricing page to match their screenshot exactly.
 export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
   free: {
     id: "free",
     name: "Free",
-    tagline: "Try FileRecall. Upgrade when the limits bite.",
+    tagline: "Perfect for trying secure file sharing and basic document tracking.",
     payable: false,
     prices: {
       monthly: { amount: 0, currency: "USD" },
       annual: { amount: 0, currency: "USD" },
     },
     features: [
-      "Up to 5 active files",
-      "Max file size: 25 MB",
-      "Tokenised secure links",
-      "Expiry controls (date or first-view)",
-      "Instant revoke",
-      "PDF watermarking",
-      "Basic analytics (views + downloads)",
-      "FileRecall branding on recipient pages",
+      { label: "5 files per month", included: true },
+      { label: "Basic tracking", included: true },
+      { label: "7 day link expiry", included: true },
+      { label: "No watermarking", included: false },
+      { label: "No password protection", included: false },
+      { label: "No recall after 24 hours", included: false },
+      { label: "No custom branding", included: false },
     ],
     limits: {
-      // Spec: "3-5 recalled files per month". Enforced as total active
-      // documents (5 cap). Monthly rolling-window enforcement is M3.
       maxDocuments: 5,
       maxFileSizeBytes: 25 * MB,
-      // Spec includes watermarking on free tier, so it's enabled here too.
-      watermarking: true,
+      watermarking: false,
       downloadControl: false,
       customBranding: false,
       teamAccounts: false,
@@ -77,27 +80,29 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
   },
   pro: {
     id: "pro",
-    name: "Professional",
-    tagline: "For freelancers, lawyers, accountants, consultants, and creators.",
+    name: "Pro",
+    tagline: "Advanced protection and tracking for professionals and growing businesses.",
     payable: true,
     prices: {
-      // $15 monthly, $144 annually (20% off vs 12 x $15 = $180).
-      monthly: { amount: 15_00, currency: "USD" },
-      annual: { amount: 144_00, currency: "USD" },
+      // $9/mo, $86.40/yr (20% off 12 x $9).
+      monthly: { amount: 9_00, currency: "USD" },
+      annual: { amount: 86_40, currency: "USD" },
     },
     features: [
-      "Everything in Free, plus:",
-      "Up to 100 active files",
-      "Max file size: 250 MB",
-      "Email notifications to recipients",
-      "Priority email support",
+      { label: "50 files per month", included: true },
+      { label: "Full tracking", included: true },
+      { label: "Expiry controls", included: true },
+      { label: "Dynamic watermarking", included: true },
+      { label: "Password protection", included: true },
+      { label: "Unlimited recall", included: true },
+      { label: "Download blocking", included: true },
+      { label: "Custom access page message", included: true },
     ],
     limits: {
-      // Spec: "100 recalled files/month". Enforced as 100-file active cap.
-      maxDocuments: 100,
+      maxDocuments: 50,
       maxFileSizeBytes: 250 * MB,
       watermarking: true,
-      downloadControl: false,
+      downloadControl: false, // marketing-listed; M3
       customBranding: false,
       teamAccounts: false,
       apiAccess: false,
@@ -105,28 +110,30 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
   },
   business: {
     id: "business",
-    name: "Team",
-    tagline: "For teams that need shared dashboards and audit logs.",
+    name: "Business",
+    tagline: "Built for teams sharing sensitive files across organizations.",
     payable: true,
     prices: {
-      // $59 monthly, $566 annually (20% off vs 12 x $59 = $708, rounded
-      // from $566.40 for a cleaner display).
-      monthly: { amount: 59_00, currency: "USD" },
-      annual: { amount: 566_00, currency: "USD" },
+      // $29/mo, $278.40/yr (20% off 12 x $29).
+      monthly: { amount: 29_00, currency: "USD" },
+      annual: { amount: 278_40, currency: "USD" },
     },
     features: [
-      "Everything in Professional, plus:",
-      "Unlimited files",
-      "Max file size: 500 MB",
-      "Priority response time",
+      { label: "300 files per month", included: true },
+      { label: "3 team seats", included: true },
+      { label: "Shared dashboard", included: true },
+      { label: "Audit logs", included: true },
+      { label: "IP allow/deny lists", included: true },
+      { label: "Priority support", included: true },
+      { label: "Custom branding", included: true },
     ],
     limits: {
-      maxDocuments: null,
+      maxDocuments: 300,
       maxFileSizeBytes: 500 * MB,
       watermarking: true,
-      downloadControl: false,
-      customBranding: false,
-      teamAccounts: false,
+      downloadControl: false, // marketing-listed; M3
+      customBranding: false, // marketing-listed; M3
+      teamAccounts: false, // marketing-listed; M3
       apiAccess: false,
     },
   },
@@ -136,9 +143,9 @@ export const PLAN_ORDER: SubscriptionPlan[] = ["free", "pro", "business"];
 export const INTERVAL_ORDER: SubscriptionInterval[] = ["monthly", "annual"];
 
 export function formatPrice(amountCents: number, currency: "USD"): string {
-  if (amountCents === 0) return "Free";
+  if (amountCents === 0) return "$0";
   const amount = amountCents / 100;
-  return `${currency} $${amount.toFixed(amount % 1 === 0 ? 0 : 2)}`;
+  return `$${amount.toFixed(amount % 1 === 0 ? 0 : 2)}`;
 }
 
 /**

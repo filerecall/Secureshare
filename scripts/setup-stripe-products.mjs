@@ -14,30 +14,27 @@
 
 import Stripe from "stripe";
 
-// Bumped from v1 because the plans were renamed and currency changed from
-// AUD to USD. v1 products + AUD prices are now legacy - archive them in
-// the Stripe dashboard if you want a clean slate.
-const SETUP_TAG = "filerecall-setup-v2";
+// Bumped to v3: prices changed to $9 / $29 per the client's pricing design.
+// Earlier v1 (AUD) and v2 ($15/$59) products are legacy - archive them in
+// the Stripe dashboard for a clean slate.
+const SETUP_TAG = "filerecall-setup-v3";
 
 const PRODUCTS = [
   {
     key: "pro",
-    name: "FileRecall Professional",
+    name: "FileRecall Pro",
     description:
-      "For freelancers, lawyers, accountants, consultants, and creators. " +
-      "Up to 100 active files, watermarking, priority support.",
-    monthlyCents: 1500, // $15
-    annualCents: 14400, // $144 (20% off vs 12 x $15)
+      "Advanced protection and tracking for professionals and growing businesses.",
+    monthlyCents: 900, // $9
+    annualCents: 8640, // $86.40 (20% off vs 12 x $9)
     envPrefix: "PRO",
   },
   {
     key: "business",
-    name: "FileRecall Team",
-    description:
-      "For teams that need shared dashboards and audit logs. " +
-      "Unlimited files, larger storage, priority response time.",
-    monthlyCents: 5900, // $59
-    annualCents: 56600, // $566 (20% off vs 12 x $59, rounded)
+    name: "FileRecall Business",
+    description: "Built for teams sharing sensitive files across organizations.",
+    monthlyCents: 2900, // $29
+    annualCents: 27840, // $278.40 (20% off vs 12 x $29)
     envPrefix: "BUSINESS",
   },
 ];

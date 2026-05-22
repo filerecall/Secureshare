@@ -25,15 +25,25 @@ export function mapStripeSubscriptionStatus(
   status: Stripe.Subscription.Status,
 ): "active" | "past_due" | "cancelled" {
   switch (status) {
+    // Paid and usable.
     case "active":
     case "trialing":
       return "active";
+    // 'past_due' is an ALREADY-ACTIVE subscription whose renewal payment
+    // failed. A short grace period is appropriate, so this keeps plan access.
     case "past_due":
-    case "unpaid":
-    case "incomplete":
       return "past_due";
-    case "canceled":
+    // Everything below means the subscription is NOT usable:
+    //  - incomplete / incomplete_expired: the FIRST payment never succeeded,
+    //    so the subscription was never really active. Must NOT grant access.
+    //  - unpaid: all renewal retries exhausted.
+    //  - canceled / paused: self-explanatory.
+    // Mapping these to 'cancelled' means activePlanFor() drops the user to
+    // the free tier - a failed payment can never look like an upgrade.
+    case "incomplete":
     case "incomplete_expired":
+    case "unpaid":
+    case "canceled":
     case "paused":
     default:
       return "cancelled";

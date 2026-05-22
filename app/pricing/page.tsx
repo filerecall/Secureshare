@@ -3,8 +3,8 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { PricingPlans } from "@/components/PricingPlans";
-import { PLANS, PLAN_ORDER } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
+import type { SubscriptionPlan } from "@/types/database";
 
 export const metadata: Metadata = {
   title: "Pricing - FileRecall",
@@ -23,38 +23,47 @@ export default async function PricingPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Resolve the user's EFFECTIVE plan. Only 'active' / 'past_due' grant a
+  // paid plan; anything else (incomplete, cancelled, none) is treated as
+  // free. This is what drives the "Current plan" disabled button.
+  let currentPlan: SubscriptionPlan = "free";
+  if (user) {
+    const { data: row } = await supabase
+      .from("users")
+      .select("subscription_plan, subscription_status")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (
+      row &&
+      (row.subscription_status === "active" || row.subscription_status === "past_due")
+    ) {
+      currentPlan = row.subscription_plan;
+    }
+  }
+
   const checkoutCancelled = searchParams.checkout === "cancelled";
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/">
+          <Link href={user ? "/dashboard" : "/login"}>
             <Logo />
           </Link>
           <div className="flex items-center gap-3">
-            {user ? (
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              >
-                Log in
-              </Link>
-            )}
+            <Link
+              href={user ? "/dashboard" : "/login"}
+              className="text-sm font-medium text-slate-700 hover:text-slate-900"
+            >
+              {user ? "Dashboard" : "Log in"}
+            </Link>
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-medium uppercase tracking-wider text-slate-500">Pricing</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-brand">Pricing</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
             Simple plans for serious document sharing.
           </h1>
@@ -70,7 +79,7 @@ export default async function PricingPage({
         ) : null}
 
         <div className="mt-12">
-          <PricingPlans isAuthenticated={!!user} />
+          <PricingPlans isAuthenticated={!!user} currentPlan={currentPlan} />
         </div>
 
         <section className="mx-auto mt-16 max-w-2xl text-center">
@@ -82,7 +91,7 @@ export default async function PricingPage({
               "Tokenised share links (256-bit entropy)",
               "Instant revoke",
               "Audit trail (views, downloads, blocks)",
-              "Email notifications via Resend",
+              "Email notifications",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
@@ -90,30 +99,6 @@ export default async function PricingPage({
               </li>
             ))}
           </ul>
-        </section>
-
-        <section className="mx-auto mt-16 max-w-2xl">
-          <h2 className="text-center text-base font-semibold text-slate-900">
-            What each plan includes
-          </h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {PLAN_ORDER.map((id) => {
-              const plan = PLANS[id];
-              return (
-                <div key={id} className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
-                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-1.5">
-                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" aria-hidden />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
         </section>
       </main>
 

@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { Eye, FileUp, Send, UploadCloud } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DocumentRow, type DocumentWithStats } from "@/components/DocumentRow";
 import { UploadButton } from "@/components/UploadButton";
@@ -72,17 +72,7 @@ export default async function DashboardPage() {
           Could not load your documents. Please refresh the page.
         </Card>
       ) : docs.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-            <FileText className="h-6 w-6 text-slate-500" aria-hidden />
-          </div>
-          <div>
-            <p className="text-base font-medium text-slate-900">No documents yet</p>
-            <p className="mt-1 max-w-sm text-sm text-slate-600">
-              Click &quot;Upload document&quot; above to add your first file.
-            </p>
-          </div>
-        </Card>
+        <EmptyState />
       ) : (
         <Card className="p-0">
           <ul className="divide-y divide-slate-200">
@@ -93,6 +83,48 @@ export default async function DashboardPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/** Polished empty state shown when the user has no documents yet. */
+function EmptyState() {
+  const steps = [
+    { icon: FileUp, label: "Upload", body: "Add a PDF or document. Encrypted the moment it lands." },
+    { icon: Send, label: "Share", body: "Send a tokenised link with an expiry you control." },
+    { icon: Eye, label: "Track", body: "See every view and revoke access whenever you want." },
+  ];
+  return (
+    <Card className="overflow-hidden p-0">
+      {/* Gradient hero strip */}
+      <div className="relative flex flex-col items-center gap-3 bg-brand-gradient px-6 py-12 text-center">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(255,255,255,0.22),transparent_70%)]"
+        />
+        <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-inset ring-white/25">
+          <UploadCloud className="h-7 w-7" aria-hidden />
+        </span>
+        <div className="relative">
+          <h2 className="text-xl font-semibold text-white">Upload your first document</h2>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-white/80">
+            Nothing here yet. Add a file and you&apos;ll have a secure, revocable link in seconds.
+          </p>
+        </div>
+      </div>
+
+      {/* Three-step hint */}
+      <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
+        {steps.map(({ icon: Icon, label, body }) => (
+          <div key={label} className="flex flex-col gap-2 bg-white p-5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-brand">
+              <Icon className="h-4 w-4" aria-hidden />
+            </span>
+            <p className="text-sm font-semibold text-slate-900">{label}</p>
+            <p className="text-xs leading-relaxed text-slate-600">{body}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

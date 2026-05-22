@@ -26,8 +26,12 @@ export default async function SettingsPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const planId = row?.subscription_plan ?? "free";
   const status = row?.subscription_status ?? "free";
+  // The EFFECTIVE plan: only active / past_due grant the paid plan. A failed
+  // first payment (status incomplete -> mapped to cancelled) must show Free,
+  // not the plan the user attempted to buy.
+  const isPaidNow = status === "active" || status === "past_due";
+  const planId = isPaidNow ? (row?.subscription_plan ?? "free") : "free";
   const plan = PLANS[planId];
   const periodEnd = row?.subscription_current_period_end
     ? new Date(row.subscription_current_period_end)
