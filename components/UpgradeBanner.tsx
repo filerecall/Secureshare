@@ -36,19 +36,19 @@ export function UpgradeBanner() {
           </div>
         </div>
 
+        {/* Both CTAs use the same solid white treatment so each one clearly
+            reads as a live, clickable button against the gradient. */}
         <div className="flex flex-wrap gap-2.5">
           <Link href="/pricing?plan=pro">
-            <Button className="bg-white text-slate-900 hover:bg-slate-100">
+            <Button className="bg-white text-slate-900 shadow-sm hover:bg-slate-100">
               Upgrade to Pro · {proPrice}/mo
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           </Link>
           <Link href="/pricing?plan=business">
-            <Button
-              variant="ghost"
-              className="border border-white/40 text-white hover:bg-white/10 hover:text-white"
-            >
+            <Button className="bg-white text-slate-900 shadow-sm hover:bg-slate-100">
               Upgrade to Business · {businessPrice}/mo
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           </Link>
         </div>
