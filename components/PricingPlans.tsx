@@ -156,7 +156,7 @@ export function PricingPlans({ isAuthenticated, currentPlan }: Props) {
 
               <div className="mt-5 flex items-baseline gap-1.5">
                 <span className="text-3xl font-semibold tracking-tight text-slate-900">
-                  {formatPrice(price.amount, price.currency)}
+                  {formatPrice(price.amount)}
                 </span>
                 {price.amount > 0 ? (
                   <span className="text-sm text-slate-500">
