@@ -142,7 +142,7 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
 export const PLAN_ORDER: SubscriptionPlan[] = ["free", "pro", "business"];
 export const INTERVAL_ORDER: SubscriptionInterval[] = ["monthly", "annual"];
 
-export function formatPrice(amountCents: number, currency: "USD"): string {
+export function formatPrice(amountCents: number): string {
   if (amountCents === 0) return "$0";
   const amount = amountCents / 100;
   return `$${amount.toFixed(amount % 1 === 0 ? 0 : 2)}`;
