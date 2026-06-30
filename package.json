@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs",
     "format": "prettier --write .",
     "setup:stripe": "node --env-file=.env.local scripts/setup-stripe-products.mjs"
   },
@@ -17,10 +18,12 @@
     "@supabase/supabase-js": "^2.45.4",
     "clsx": "^2.1.1",
     "lucide-react": "^0.451.0",
+    "mammoth": "^1.12.0",
     "next": "14.2.15",
     "pdf-lib": "^1.17.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-pdf": "^10.4.1",
     "resend": "^4.0.1",
     "stripe": "^17.4.0",
     "tailwind-merge": "^2.5.4"

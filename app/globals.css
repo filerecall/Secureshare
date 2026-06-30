@@ -10,3 +10,87 @@
     @apply bg-slate-50 text-slate-900 antialiased;
   }
 }
+
+@media print {
+  body {
+    display: none !important;
+  }
+}
+
+.viewer-content .react-pdf__Page__textContent {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: none;
+}
+
+.viewer-content .react-pdf__Page__textContent span {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.viewer-content .react-pdf__Page__textContent mark {
+  pointer-events: auto;
+}
+
+.docx-content {
+  line-height: 1.7;
+  color: #1e293b;
+}
+
+.docx-content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem;
+  color: #0f172a;
+}
+
+.docx-content h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.625rem;
+  color: #0f172a;
+}
+
+.docx-content h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: #1e293b;
+}
+
+.docx-content p {
+  margin: 0.5rem 0;
+}
+
+.docx-content ul,
+.docx-content ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.docx-content li {
+  margin: 0.25rem 0;
+}
+
+.docx-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.docx-content th,
+.docx-content td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.docx-content th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.docx-content img {
+  max-width: 100%;
+  height: auto;
+}
