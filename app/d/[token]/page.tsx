@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { unstable_noStore as noStore } from "next/cache";
-import { Download, FileText, Lock, ShieldOff } from "lucide-react";
+import { Lock, ShieldOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Logo } from "@/components/Logo";
+import { SecureViewer } from "@/components/SecureViewer";
 import { getSenderPlan, shouldShowFreeBranding } from "@/lib/sender-plan";
 import {
   logAccessEvent,
@@ -13,31 +14,30 @@ import {
 
 export const metadata: Metadata = {
   title: "Secure document - FileRecall",
-  // Recipient pages should never appear in search.
   robots: { index: false, follow: false },
 };
 
-// Force dynamic + opt out of every caching layer. Without these, a recipient
-// who refreshes the page after the sender revokes can be served the previous
-// "Download available" render from BFCache / Data Cache / Vercel's edge.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
+
+const VIEWABLE_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "text/csv",
+]);
 
 interface PageProps {
   params: { token: string };
 }
 
 export default async function RecipientPage({ params }: PageProps) {
-  // Belt to the suspenders above. unstable_noStore opts out of Next's Data
-  // Cache for any fetches in this render and also disables Full Route Cache.
   noStore();
   const lookup = await lookupShareLink(params.token);
 
   if (!lookup.ok) {
-    // Log the block attempt so the sender can see it in the audit log later.
-    // For 'not_found' tokens we have nothing to attribute the event to, so
-    // we skip logging in that case.
     if ("shareLinkId" in lookup && lookup.shareLinkId) {
       await logAccessEvent(lookup.shareLinkId, "blocked");
     }
@@ -50,53 +50,87 @@ export default async function RecipientPage({ params }: PageProps) {
 
   const { shareLink, document } = lookup;
 
-  // Stamp first_viewed_at BEFORE logging the event so a refresh during this
-  // request still sees the field set.
   await markFirstViewed(shareLink);
   await logAccessEvent(shareLink.id, "viewed");
 
-  // Free-tier senders get a "Sent via FileRecall" footer shown to recipients
-  // as a soft upsell. Paid tiers don't (they pay to remove the branding).
   const senderPlan = await getSenderPlan(document.user_id);
   const showFreeBranding = shouldShowFreeBranding(senderPlan);
+  const isViewable = VIEWABLE_TYPES.has(document.mime_type);
+
+  if (isViewable) {
+    return (
+      <ViewerShell freeBranding={showFreeBranding}>
+        <div className="mb-3 flex items-center justify-between gap-4 px-1">
+          <ExpiryNotice
+            expiryType={shareLink.expiry_type}
+            expiresAt={shareLink.expires_at}
+          />
+          <p className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500">
+            <Lock className="h-3 w-3 text-emerald-600" aria-hidden />
+            End-to-end secured
+          </p>
+        </div>
+        <SecureViewer
+          token={params.token}
+          fileName={document.file_name}
+          mimeType={document.mime_type}
+          recipientEmail={shareLink.recipient_email}
+        />
+      </ViewerShell>
+    );
+  }
 
   return (
     <RecipientShell freeBranding={showFreeBranding}>
       <Card className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-            <FileText className="h-6 w-6" aria-hidden />
+            <ShieldOff className="h-6 w-6" aria-hidden />
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-xl font-semibold text-slate-900">
               {document.file_name}
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              {formatBytes(document.file_size)} · Shared securely with{" "}
-              <span className="font-medium text-slate-900">{shareLink.recipient_email}</span>
+              This file type cannot be viewed in the browser.
             </p>
           </div>
         </div>
-
-        <ExpiryNotice
-          expiryType={shareLink.expiry_type}
-          expiresAt={shareLink.expires_at}
-        />
-
-        <a
-          href={`/api/d/${shareLink.token}/download`}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-7 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2"
-        >
-          <Download className="h-4 w-4" aria-hidden />
-          Download document
-        </a>
-
-        <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500">
-          <Lock className="h-3 w-3 text-emerald-600" aria-hidden />
-          AES-256 encrypted at rest · TLS 1.3 in transit
-        </p>
       </Card>
     </RecipientShell>
+  );
+}
+
+function ViewerShell({
+  children,
+  freeBranding = false,
+}: {
+  children: React.ReactNode;
+  freeBranding?: boolean;
+}) {
+  return (
+    <div className="flex min-h-dvh flex-col bg-slate-50">
+      <header className="flex items-center justify-between px-4 py-3 sm:px-6">
+        <Logo />
+        <p className="text-xs text-slate-400">View only</p>
+      </header>
+      <main className="flex flex-1 flex-col px-4 pb-4 sm:px-6">
+        {children}
+      </main>
+      {freeBranding ? (
+        <footer className="px-4 pb-4 text-center sm:px-6">
+          <a
+            href="https://filerecall.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700"
+          >
+            Sent via <span className="font-semibold text-slate-700">FileRecall</span> -
+            secure document delivery
+          </a>
+        </footer>
+      ) : null}
+    </div>
   );
 }
 
@@ -141,16 +175,14 @@ function ExpiryNotice({
 }) {
   let text: string;
   if (expiryType === "first_view") {
-    text = "This link expires after this view. Save the file now if you need it.";
+    text = "This link expires after this view.";
   } else if (expiryType === "days" && expiresAt) {
-    text = `This link expires on ${formatDate(expiresAt)}.`;
+    text = `Expires on ${formatDate(expiresAt)}.`;
   } else {
-    text = "This link stays active until the sender revokes it.";
+    text = "Active until revoked.";
   }
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      {text}
-    </div>
+    <p className="text-xs text-amber-700">{text}</p>
   );
 }
 
@@ -185,12 +217,6 @@ function BlockedCard({ reason }: { reason: ShareLinkBlockReason }) {
       </div>
     </Card>
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function formatDate(iso: string): string {

@@ -3,40 +3,48 @@ import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 
 interface WatermarkOptions {
   recipientEmail: string;
-  /** ISO timestamp of the access event. */
   accessedAt: string;
 }
 
-/**
- * Apply a diagonal watermark to every page of a PDF buffer. Returns a new
- * Uint8Array. Non-PDF inputs should not be passed here; the caller should
- * pass them through unmodified.
- */
 export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(input, { ignoreEncryption: true });
   const helvetica = await pdf.embedFont(StandardFonts.Helvetica);
 
-  const stamp = `FileRecall · ${opts.recipientEmail} · ${formatTimestamp(opts.accessedAt)}`;
+  const stamp = `FileRecall | ${opts.recipientEmail} | ${formatTimestamp(opts.accessedAt)}`;
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
-    // Diagonal centred text. Size scales with page width so it reads on A4
-    // and US Letter without looking giant on small thumbnails.
-    const fontSize = Math.min(28, Math.max(14, width / 28));
+    const fontSize = Math.min(18, Math.max(10, width / 40));
     const textWidth = helvetica.widthOfTextAtSize(stamp, fontSize);
 
-    page.drawText(stamp, {
-      x: width / 2 - textWidth / 2,
-      y: height / 2,
-      size: fontSize,
-      font: helvetica,
-      color: rgb(0.5, 0.55, 0.65),
-      rotate: degrees(-30),
-      opacity: 0.22,
-    });
+    const cols = Math.ceil(width / (textWidth * 0.7)) + 1;
+    const rowGap = fontSize * 6;
+    const rows = Math.ceil(height / rowGap) + 2;
+
+    for (let r = -1; r < rows; r++) {
+      for (let c = -1; c < cols; c++) {
+        const x = c * textWidth * 0.65 + (r % 2 === 0 ? 0 : textWidth * 0.3);
+        const y = r * rowGap;
+
+        page.drawText(stamp, {
+          x,
+          y,
+          size: fontSize,
+          font: helvetica,
+          color: rgb(0.45, 0.48, 0.55),
+          rotate: degrees(-35),
+          opacity: 0.18,
+        });
+      }
+    }
   }
 
   return pdf.save();
+}
+
+export async function getPageCount(input: Uint8Array): Promise<number> {
+  const pdf = await PDFDocument.load(input, { ignoreEncryption: true });
+  return pdf.getPageCount();
 }
 
 function formatTimestamp(iso: string): string {
