@@ -31,9 +31,9 @@ export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): P
           y,
           size: fontSize,
           font: helvetica,
-          color: rgb(0.28, 0.3, 0.38),
+          color: rgb(0.15, 0.15, 0.22),
           rotate: degrees(-35),
-          opacity: 0.45,
+          opacity: 0.85,
         });
       }
     }
