@@ -391,6 +391,8 @@ export function SecureViewer({ token, fileName }: Props) {
               currentSlide={currentPage}
               watermarkText={state.watermarkText}
               scale={scale}
+              onPrev={() => goTo(currentPage - 1)}
+              onNext={() => goTo(currentPage + 1)}
             />
           )}
           {state.status === "docx" && (
@@ -598,7 +600,7 @@ function highlightSearchText(text: string, query: string): string {
   return text.replace(regex, '<mark style="background:#FBBF24;padding:0 1px;border-radius:2px">$1</mark>');
 }
 
-function WatermarkOverlay({ text }: { text: string }) {
+function WatermarkOverlay({ text, variant = "dark" }: { text: string; variant?: "dark" | "light" }) {
   const items: { top: number; left: number }[] = [];
   const rowH = 160;
   const colW = 380;
@@ -614,6 +616,10 @@ function WatermarkOverlay({ text }: { text: string }) {
       });
     }
   }
+
+  const color = variant === "light"
+    ? "rgba(255, 255, 255, 0.25)"
+    : "rgba(40, 45, 60, 0.28)";
 
   return (
     <div
@@ -633,7 +639,7 @@ function WatermarkOverlay({ text }: { text: string }) {
             fontSize: "18px",
             fontWeight: 600,
             fontFamily: "Helvetica, Arial, sans-serif",
-            color: "rgba(40, 45, 60, 0.28)",
+            color,
             userSelect: "none",
             letterSpacing: "0.5px",
           }}
@@ -650,11 +656,15 @@ function PptxContent({
   currentSlide,
   watermarkText,
   scale,
+  onPrev,
+  onNext,
 }: {
   slides: PptxSlide[];
   currentSlide: number;
   watermarkText: string;
   scale: number;
+  onPrev: () => void;
+  onNext: () => void;
 }) {
   const slide = slides[currentSlide - 1];
   if (!slide) return null;
@@ -664,9 +674,9 @@ function PptxContent({
     slide.paragraphs.some((p) => p.length < 60);
 
   return (
-    <div className="flex justify-center p-4">
+    <div className="flex h-full flex-col items-center justify-center p-4">
       <div
-        className="relative w-full max-w-[960px]"
+        className="relative w-full"
         style={{
           transform: `scale(${scale})`,
           transformOrigin: "top center",
@@ -676,7 +686,22 @@ function PptxContent({
           className="relative overflow-hidden rounded-sm bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-md"
           style={{ aspectRatio: "16 / 9" }}
         >
-          <WatermarkOverlay text={watermarkText} />
+          <WatermarkOverlay text={watermarkText} variant="light" />
+
+          {/* Click zones for prev/next */}
+          <button
+            onClick={onPrev}
+            disabled={currentSlide <= 1}
+            className="absolute left-0 top-0 z-20 h-full w-1/5 cursor-pointer opacity-0 disabled:cursor-default"
+            aria-label="Previous slide"
+          />
+          <button
+            onClick={onNext}
+            disabled={currentSlide >= slides.length}
+            className="absolute right-0 top-0 z-20 h-full w-1/5 cursor-pointer opacity-0 disabled:cursor-default"
+            aria-label="Next slide"
+          />
+
           <div
             className={`flex h-full select-none flex-col p-10 ${isTitle ? "items-center justify-center text-center" : "justify-start"}`}
             style={{ userSelect: "none" }}
@@ -719,13 +744,13 @@ function PptxContent({
               );
             })}
             {slide.images.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-start gap-4">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
                 {slide.images.map((img, i) => (
                   <img
                     key={i}
                     src={img.src}
                     alt=""
-                    className="max-h-[300px] max-w-full rounded object-contain"
+                    className="max-h-[40vh] max-w-full rounded object-contain"
                     draggable={false}
                     onContextMenu={(e) => e.preventDefault()}
                   />
