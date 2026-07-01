@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import mammoth from "mammoth";
 import { env } from "@/lib/env";
+import { sendViewNotificationEmail } from "@/lib/email/view-notification-email";
 import { getS3Client } from "@/lib/s3";
 import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { watermarkPdf } from "@/lib/watermark";
 
 export const runtime = "nodejs";
@@ -26,6 +28,29 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
   }
 
   await logAccessEvent(shareLink.id, "viewed");
+
+  void (async () => {
+    try {
+      const admin = createAdminClient();
+      const { data: sender } = await admin
+        .from("users")
+        .select("email")
+        .eq("id", document.user_id)
+        .maybeSingle<{ email: string }>();
+
+      if (sender?.email) {
+        await sendViewNotificationEmail({
+          senderEmail: sender.email,
+          recipientEmail: shareLink.recipient_email,
+          documentName: document.file_name,
+          viewedAt: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("View notification email failed", err);
+    }
+  })();
 
   const s3Response = await getS3Client().send(
     new GetObjectCommand({ Bucket: env.awsS3Bucket(), Key: document.s3_key }),

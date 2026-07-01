@@ -37,6 +37,15 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)",
       },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translate(-50%, 10px)" },
+          "100%": { opacity: "1", transform: "translate(-50%, 0)" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 0.3s ease-out",
+      },
     },
   },
   plugins: [],

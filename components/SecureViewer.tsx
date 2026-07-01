@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   FileText,
   Loader2,
   Minus,
+  PanelLeft,
   Plus,
   Search,
   X,
@@ -40,8 +42,11 @@ export function SecureViewer({ token, fileName }: Props) {
   const [zoomIndex, setZoomIndex] = useState(2);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [toastVisible, setToastVisible] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfUrlRef = useRef<string | null>(null);
+  const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null);
 
   const scale = ZOOM_STEPS[zoomIndex] ?? 1;
 
@@ -99,13 +104,44 @@ export function SecureViewer({ token, fileName }: Props) {
     };
   }, [token]);
 
+  // Auto-dismiss toast after 6 seconds
   useEffect(() => {
-    function blockKeys(e: KeyboardEvent) {
+    if (!toastVisible) return;
+    const timer = setTimeout(() => setToastVisible(false), 6000);
+    return () => clearTimeout(timer);
+  }, [toastVisible]);
+
+  // Block save/print + keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
         e.preventDefault();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setCurrentPage((p) => Math.max(1, p - 1));
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setCurrentPage((p) => Math.min(p + 1, numPages || 1));
+      }
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setZoomIndex((i) => Math.min(i + 1, ZOOM_STEPS.length - 1));
+      }
+      if (e.key === "-") {
+        e.preventDefault();
+        setZoomIndex((i) => Math.max(i - 1, 0));
       }
     }
 
@@ -113,14 +149,57 @@ export function SecureViewer({ token, fileName }: Props) {
       e.preventDefault();
     }
 
-    document.addEventListener("keydown", blockKeys);
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("contextmenu", blockContext);
 
     return () => {
-      document.removeEventListener("keydown", blockKeys);
+      document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("contextmenu", blockContext);
     };
-  }, []);
+  }, [numPages]);
+
+  // Pinch-to-zoom
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    function getTouchDist(e: TouchEvent): number {
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        pinchRef.current = { startDist: getTouchDist(e), startZoom: zoomIndex };
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const currentDist = getTouchDist(e);
+        const ratio = currentDist / pinchRef.current.startDist;
+        const delta = Math.round((ratio - 1) * 3);
+        const newIndex = Math.max(0, Math.min(pinchRef.current.startZoom + delta, ZOOM_STEPS.length - 1));
+        setZoomIndex(newIndex);
+      }
+    }
+
+    function onTouchEnd() {
+      pinchRef.current = null;
+    }
+
+    container.addEventListener("touchstart", onTouchStart, { passive: true });
+    container.addEventListener("touchmove", onTouchMove, { passive: false });
+    container.addEventListener("touchend", onTouchEnd);
+
+    return () => {
+      container.removeEventListener("touchstart", onTouchStart);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [zoomIndex]);
 
   const onDocumentLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
     setNumPages(n);
@@ -163,16 +242,28 @@ export function SecureViewer({ token, fileName }: Props) {
     );
   }
 
+  const isPdf = state.status === "pdf";
+
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+    <div className="relative flex h-[calc(100dvh-4rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+        {isPdf && numPages > 1 && (
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-200 ${sidebarOpen ? "bg-slate-200" : ""}`}
+            aria-label="Toggle page thumbnails"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
+        )}
+
         <div className="mr-auto flex min-w-0 items-center gap-2">
           <FileText className="h-4 w-4 shrink-0 text-slate-500" />
           <span className="truncate text-sm font-medium text-slate-700">{fileName}</span>
         </div>
 
-        {state.status === "pdf" && numPages > 0 && (
+        {isPdf && numPages > 0 && (
           <div className="flex items-center gap-1">
             <button
               onClick={() => goTo(currentPage - 1)}
@@ -253,28 +344,106 @@ export function SecureViewer({ token, fileName }: Props) {
         </div>
       )}
 
-      {/* Document content */}
-      <div
-        ref={containerRef}
-        className="viewer-content relative flex-1 overflow-auto bg-slate-100"
-      >
-        {state.status === "pdf" && (
-          <PdfContent
+      {/* Main area with optional sidebar */}
+      <div className="flex min-h-0 flex-1">
+        {/* Thumbnails sidebar */}
+        {isPdf && sidebarOpen && numPages > 1 && (
+          <ThumbnailSidebar
             url={state.url}
-            scale={scale}
-            currentPage={currentPage}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onPageChange={setCurrentPage}
             numPages={numPages}
-            searchQuery={searchQuery}
+            currentPage={currentPage}
+            onPageSelect={goTo}
           />
         )}
-        {state.status === "docx" && (
-          <DocxContent html={state.html} watermarkText={state.watermarkText} scale={scale} />
-        )}
-        {state.status === "text" && (
-          <TextContent content={state.content} watermarkText={state.watermarkText} scale={scale} />
-        )}
+
+        {/* Document content */}
+        <div
+          ref={containerRef}
+          className="viewer-content relative min-w-0 flex-1 overflow-auto bg-slate-100"
+        >
+          {state.status === "pdf" && (
+            <PdfContent
+              url={state.url}
+              scale={scale}
+              currentPage={currentPage}
+              onLoadSuccess={onDocumentLoadSuccess}
+              onPageChange={setCurrentPage}
+              numPages={numPages}
+              searchQuery={searchQuery}
+            />
+          )}
+          {state.status === "docx" && (
+            <DocxContent html={state.html} watermarkText={state.watermarkText} scale={scale} />
+          )}
+          {state.status === "text" && (
+            <TextContent content={state.content} watermarkText={state.watermarkText} scale={scale} />
+          )}
+        </div>
+      </div>
+
+      {/* Screenshot warning toast */}
+      {toastVisible && (
+        <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 animate-fade-in">
+          <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-xs font-medium text-amber-800">
+              This document is watermarked and traceable. Screenshots can be identified.
+            </p>
+            <button
+              onClick={() => setToastVisible(false)}
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-amber-500 hover:text-amber-700"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ThumbnailSidebar({
+  url,
+  numPages,
+  currentPage,
+  onPageSelect,
+}: {
+  url: string;
+  numPages: number;
+  currentPage: number;
+  onPageSelect: (page: number) => void;
+}) {
+  return (
+    <div className="flex w-[140px] shrink-0 flex-col border-r border-slate-200 bg-slate-50">
+      <div className="flex-1 overflow-y-auto p-2">
+        <Document file={url} loading={null}>
+          {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => onPageSelect(pageNum)}
+              className={`mb-2 w-full cursor-pointer rounded-md border-2 p-1 transition ${
+                currentPage === pageNum
+                  ? "border-brand bg-white shadow-sm"
+                  : "border-transparent hover:border-slate-300 hover:bg-white"
+              }`}
+              aria-label={`Go to page ${pageNum}`}
+            >
+              <Page
+                pageNumber={pageNum}
+                width={110}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                loading={
+                  <div className="flex h-[155px] items-center justify-center bg-white">
+                    <Loader2 className="h-3 w-3 animate-spin text-slate-300" />
+                  </div>
+                }
+              />
+              <p className="mt-1 text-center text-[10px] text-slate-500">{pageNum}</p>
+            </button>
+          ))}
+        </Document>
       </div>
     </div>
   );

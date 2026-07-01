@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Eye, FileText, Link as LinkIcon, Share2, Trash2 } from "lucide-react";
+import { Download, Eye, File, FileText, FileType, Link as LinkIcon, Share2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ShareDialog } from "@/components/ShareDialog";
 import type { DocumentRow as DocumentRecord, DocumentStatus } from "@/types/database";
@@ -52,9 +52,7 @@ export function DocumentRow({ document }: Props) {
     <>
       <li className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-            <FileText className="h-5 w-5" aria-hidden />
-          </div>
+          <FileTypeIcon mimeType={document.mime_type} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-slate-900">{document.file_name}</p>
             <p className="text-xs text-slate-500">
@@ -162,4 +160,29 @@ function formatRelative(iso: string): string {
   if (abs < 3_600_000) return `${Math.round(abs / 60_000)}m ago`;
   if (abs < 86_400_000) return `${Math.round(abs / 3_600_000)}h ago`;
   return `${Math.round(abs / 86_400_000)}d ago`;
+}
+
+const FILE_TYPE_MAP: Record<string, { icon: typeof FileText; bg: string; fg: string; label: string }> = {
+  "application/pdf": { icon: FileText, bg: "bg-red-50", fg: "text-red-600", label: "PDF" },
+  "application/msword": { icon: FileType, bg: "bg-blue-50", fg: "text-blue-600", label: "DOC" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { icon: FileType, bg: "bg-blue-50", fg: "text-blue-600", label: "DOCX" },
+  "text/plain": { icon: File, bg: "bg-slate-50", fg: "text-slate-600", label: "TXT" },
+  "text/csv": { icon: File, bg: "bg-green-50", fg: "text-green-600", label: "CSV" },
+  "image/png": { icon: File, bg: "bg-purple-50", fg: "text-purple-600", label: "PNG" },
+  "image/jpeg": { icon: File, bg: "bg-purple-50", fg: "text-purple-600", label: "JPG" },
+};
+
+function FileTypeIcon({ mimeType }: { mimeType: string }) {
+  const entry = FILE_TYPE_MAP[mimeType] ?? { icon: File, bg: "bg-slate-100", fg: "text-slate-500", label: "" };
+  const Icon = entry.icon;
+  return (
+    <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${entry.bg} ${entry.fg}`}>
+      <Icon className="h-5 w-5" aria-hidden />
+      {entry.label && (
+        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded bg-white px-1 text-[8px] font-bold leading-tight shadow-sm ring-1 ring-slate-200">
+          {entry.label}
+        </span>
+      )}
+    </div>
+  );
 }
