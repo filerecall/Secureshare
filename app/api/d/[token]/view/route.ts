@@ -3,6 +3,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import mammoth from "mammoth";
 import { env } from "@/lib/env";
 import { sendViewNotificationEmail } from "@/lib/email/view-notification-email";
+import { parsePptx } from "@/lib/pptx-parser";
 import { getS3Client } from "@/lib/s3";
 import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -101,6 +102,30 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
       {
         type: "docx",
         html: result.value,
+        watermark: {
+          recipientEmail: shareLink.recipient_email,
+          accessedAt: new Date().toISOString(),
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          "X-Content-Type-Options": "nosniff",
+        },
+      },
+    );
+  }
+
+  if (
+    mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    mimeType === "application/vnd.ms-powerpoint"
+  ) {
+    const slides = await parsePptx(Buffer.from(inputBytes));
+
+    return NextResponse.json(
+      {
+        type: "pptx",
+        slides,
         watermark: {
           recipientEmail: shareLink.recipient_email,
           accessedAt: new Date().toISOString(),

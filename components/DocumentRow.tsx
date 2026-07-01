@@ -166,6 +166,8 @@ const FILE_TYPE_MAP: Record<string, { icon: typeof FileText; bg: string; fg: str
   "application/pdf": { icon: FileText, bg: "bg-red-50", fg: "text-red-600", label: "PDF" },
   "application/msword": { icon: FileType, bg: "bg-blue-50", fg: "text-blue-600", label: "DOC" },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { icon: FileType, bg: "bg-blue-50", fg: "text-blue-600", label: "DOCX" },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": { icon: FileType, bg: "bg-orange-50", fg: "text-orange-600", label: "PPTX" },
+  "application/vnd.ms-powerpoint": { icon: FileType, bg: "bg-orange-50", fg: "text-orange-600", label: "PPT" },
   "text/plain": { icon: File, bg: "bg-slate-50", fg: "text-slate-600", label: "TXT" },
   "text/csv": { icon: File, bg: "bg-green-50", fg: "text-green-600", label: "CSV" },
   "image/png": { icon: File, bg: "bg-purple-50", fg: "text-purple-600", label: "PNG" },

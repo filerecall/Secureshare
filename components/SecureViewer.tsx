@@ -26,12 +26,19 @@ interface Props {
   recipientEmail: string;
 }
 
+interface PptxSlide {
+  index: number;
+  paragraphs: string[];
+  images: { src: string }[];
+}
+
 type ViewerState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "pdf"; url: string }
   | { status: "docx"; html: string; watermarkText: string }
-  | { status: "text"; content: string; watermarkText: string };
+  | { status: "text"; content: string; watermarkText: string }
+  | { status: "pptx"; slides: PptxSlide[]; watermarkText: string };
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 
@@ -76,6 +83,10 @@ export function SecureViewer({ token, fileName }: Props) {
           if (data.type === "docx") {
             const wm = `FileRecall | ${data.watermark.recipientEmail} | ${data.watermark.accessedAt}`;
             setState({ status: "docx", html: data.html, watermarkText: wm });
+          } else if (data.type === "pptx") {
+            const wm = `FileRecall | ${data.watermark.recipientEmail} | ${data.watermark.accessedAt}`;
+            setState({ status: "pptx", slides: data.slides, watermarkText: wm });
+            setNumPages(data.slides.length);
           } else if (data.type === "text") {
             const wm = `FileRecall | ${data.watermark.recipientEmail} | ${data.watermark.accessedAt}`;
             setState({ status: "text", content: data.content, watermarkText: wm });
@@ -243,6 +254,8 @@ export function SecureViewer({ token, fileName }: Props) {
   }
 
   const isPdf = state.status === "pdf";
+  const isPptx = state.status === "pptx";
+  const hasPages = isPdf || isPptx;
 
   return (
     <div className="relative flex h-[calc(100dvh-4rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -263,24 +276,24 @@ export function SecureViewer({ token, fileName }: Props) {
           <span className="truncate text-sm font-medium text-slate-700">{fileName}</span>
         </div>
 
-        {isPdf && numPages > 0 && (
+        {hasPages && numPages > 0 && (
           <div className="flex items-center gap-1">
             <button
               onClick={() => goTo(currentPage - 1)}
               disabled={currentPage <= 1}
               className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-200 disabled:opacity-40"
-              aria-label="Previous page"
+              aria-label={isPptx ? "Previous slide" : "Previous page"}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="min-w-[5rem] text-center text-xs text-slate-600">
-              {currentPage} / {numPages}
+              {isPptx ? `Slide ${currentPage}` : currentPage} / {numPages}
             </span>
             <button
               onClick={() => goTo(currentPage + 1)}
               disabled={currentPage >= numPages}
               className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-200 disabled:opacity-40"
-              aria-label="Next page"
+              aria-label={isPptx ? "Next slide" : "Next page"}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -370,6 +383,14 @@ export function SecureViewer({ token, fileName }: Props) {
               onPageChange={setCurrentPage}
               numPages={numPages}
               searchQuery={searchQuery}
+            />
+          )}
+          {state.status === "pptx" && (
+            <PptxContent
+              slides={state.slides}
+              currentSlide={currentPage}
+              watermarkText={state.watermarkText}
+              scale={scale}
             />
           )}
           {state.status === "docx" && (
@@ -620,6 +641,108 @@ function WatermarkOverlay({ text }: { text: string }) {
           {text}
         </span>
       ))}
+    </div>
+  );
+}
+
+function PptxContent({
+  slides,
+  currentSlide,
+  watermarkText,
+  scale,
+}: {
+  slides: PptxSlide[];
+  currentSlide: number;
+  watermarkText: string;
+  scale: number;
+}) {
+  const slide = slides[currentSlide - 1];
+  if (!slide) return null;
+
+  const isTitle =
+    slide.paragraphs.length <= 3 &&
+    slide.paragraphs.some((p) => p.length < 60);
+
+  return (
+    <div className="flex justify-center p-4">
+      <div
+        className="relative w-full max-w-[960px]"
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: "top center",
+        }}
+      >
+        <div
+          className="relative overflow-hidden rounded-sm bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-md"
+          style={{ aspectRatio: "16 / 9" }}
+        >
+          <WatermarkOverlay text={watermarkText} />
+          <div
+            className={`flex h-full select-none flex-col p-10 ${isTitle ? "items-center justify-center text-center" : "justify-start"}`}
+            style={{ userSelect: "none" }}
+          >
+            {slide.paragraphs.map((para, i) => {
+              if (isTitle && i === 0) {
+                return (
+                  <p
+                    key={i}
+                    className="mb-4 text-3xl font-bold leading-tight text-white"
+                  >
+                    {para}
+                  </p>
+                );
+              }
+              if (isTitle) {
+                return (
+                  <p key={i} className="text-lg text-slate-300">
+                    {para}
+                  </p>
+                );
+              }
+              if (i === 0) {
+                return (
+                  <p
+                    key={i}
+                    className="mb-6 text-2xl font-bold text-white"
+                  >
+                    {para}
+                  </p>
+                );
+              }
+              return (
+                <p
+                  key={i}
+                  className="mb-3 text-base leading-relaxed text-slate-200"
+                >
+                  {para}
+                </p>
+              );
+            })}
+            {slide.images.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-start gap-4">
+                {slide.images.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img.src}
+                    alt=""
+                    className="max-h-[300px] max-w-full rounded object-contain"
+                    draggable={false}
+                    onContextMenu={(e) => e.preventDefault()}
+                  />
+                ))}
+              </div>
+            )}
+            {slide.paragraphs.length === 0 && slide.images.length === 0 && (
+              <p className="text-sm italic text-slate-500">
+                (Empty slide)
+              </p>
+            )}
+          </div>
+        </div>
+        <p className="mt-2 text-center text-xs text-slate-400">
+          Slide {currentSlide} of {slides.length}
+        </p>
+      </div>
     </div>
   );
 }

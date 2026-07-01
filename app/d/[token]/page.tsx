@@ -25,6 +25,8 @@ const VIEWABLE_TYPES = new Set([
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
   "text/plain",
   "text/csv",
 ]);
