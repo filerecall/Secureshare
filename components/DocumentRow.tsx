@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Eye, FileText, Link as LinkIcon, Share2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Download, Eye, FileText, Link as LinkIcon, Share2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ShareDialog } from "@/components/ShareDialog";
 import type { DocumentRow as DocumentRecord, DocumentStatus } from "@/types/database";
@@ -28,9 +29,24 @@ const statusStyles: Record<DocumentStatus, string> = {
 };
 
 export function DocumentRow({ document }: Props) {
+  const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const canShare = document.status === "active" && !!document.s3_key;
   const { stats } = document;
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/documents/${document.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      router.refresh();
+    } catch {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
 
   return (
     <>
@@ -63,6 +79,27 @@ export function DocumentRow({ document }: Props) {
             <Share2 className="h-3.5 w-3.5" aria-hidden />
             Share
           </Button>
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-600">Delete?</span>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button size="sm" variant="danger" onClick={handleDelete} loading={deleting}>
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                Yes
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmDelete(true)}
+              title="Delete document"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+          )}
         </div>
       </li>
       <ShareDialog
