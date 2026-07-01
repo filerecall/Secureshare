@@ -14,17 +14,17 @@ export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): P
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
-    const fontSize = Math.min(36, Math.max(20, width / 18));
+    const fontSize = Math.min(24, Math.max(12, width / 28));
     const textWidth = helvetica.widthOfTextAtSize(stamp, fontSize);
 
-    const colGap = textWidth * 0.9;
-    const cols = Math.ceil(width / colGap) + 1;
-    const rowGap = fontSize * 9;
-    const rows = Math.ceil(height / rowGap) + 2;
+    const colGap = textWidth * 0.55;
+    const cols = Math.ceil(width / colGap) + 2;
+    const rowGap = fontSize * 5.5;
+    const rows = Math.ceil(height / rowGap) + 3;
 
-    for (let r = -1; r < rows; r++) {
-      for (let c = -1; c < cols; c++) {
-        const x = c * colGap + (r % 2 === 0 ? 0 : colGap * 0.4);
+    for (let r = -2; r < rows; r++) {
+      for (let c = -2; c < cols; c++) {
+        const x = c * colGap + (r % 2 === 0 ? 0 : colGap * 0.35);
         const y = r * rowGap;
 
         page.drawText(stamp, {
@@ -32,9 +32,9 @@ export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): P
           y,
           size: fontSize,
           font: helvetica,
-          color: rgb(0, 0, 0),
+          color: rgb(0.2, 0.2, 0.28),
           rotate: degrees(-35),
-          opacity: 0.55,
+          opacity: 0.28,
         });
       }
     }

@@ -427,16 +427,16 @@ function WatermarkOverlay({ text }: { text: string }) {
           )`,
         }}
       />
-      {Array.from({ length: 12 }, (_, i) => (
+      {Array.from({ length: 25 }, (_, i) => (
         <div
           key={i}
-          className="absolute whitespace-nowrap font-sans text-[13px] font-medium tracking-wide"
+          className="absolute whitespace-nowrap font-sans text-[18px] font-semibold tracking-wide"
           style={{
-            color: "rgba(100, 110, 130, 0.15)",
+            color: "rgba(40, 45, 60, 0.28)",
             transform: "rotate(-35deg)",
-            top: `${i * 140 - 200}px`,
-            left: "-10%",
-            width: "140%",
+            top: `${i * 100 - 300}px`,
+            left: "-20%",
+            width: "160%",
             textAlign: "center",
             userSelect: "none",
           }}
