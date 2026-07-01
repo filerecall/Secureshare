@@ -415,7 +415,14 @@ function WatermarkOverlay({ text }: { text: string }) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="200" y="75" text-anchor="middle" dominant-baseline="middle" transform="rotate(-35,200,75)" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="rgba(40,45,60,0.28)">${escaped}</text><text x="0" y="225" text-anchor="middle" dominant-baseline="middle" transform="rotate(-35,0,225)" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="rgba(40,45,60,0.28)">${escaped}</text></svg>`;
+  const charWidth = 9.5;
+  const textLen = text.length * charWidth;
+  const tileW = Math.max(500, Math.ceil(textLen) + 60);
+  const tileH = 180;
+  const cx = Math.round(tileW / 2);
+  const cy = Math.round(tileH / 2);
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}"><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" transform="rotate(-35,${cx},${cy})" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="rgba(40,45,60,0.28)">${escaped}</text></svg>`;
 
   const bgUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 
@@ -426,7 +433,7 @@ function WatermarkOverlay({ text }: { text: string }) {
         zIndex: 10,
         backgroundImage: bgUrl,
         backgroundRepeat: "repeat",
-        backgroundSize: "400px 300px",
+        backgroundSize: `${tileW}px ${tileH}px`,
       }}
       aria-hidden
     />
