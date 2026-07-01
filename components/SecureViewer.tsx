@@ -409,42 +409,27 @@ function highlightSearchText(text: string, query: string): string {
 }
 
 function WatermarkOverlay({ text }: { text: string }) {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="700" height="250"><text x="350" y="125" text-anchor="middle" dominant-baseline="middle" transform="rotate(-35,350,125)" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="rgba(40,45,60,0.28)">${escaped}</text></svg>`;
+
+  const bgUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
   return (
     <div
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-      style={{ zIndex: 10, top: 0, bottom: 0, left: 0, right: 0, position: "absolute" }}
+      className="pointer-events-none absolute inset-0"
+      style={{
+        zIndex: 10,
+        backgroundImage: bgUrl,
+        backgroundRepeat: "repeat",
+        backgroundSize: "700px 250px",
+      }}
       aria-hidden
-    >
-      <div
-        className="absolute"
-        style={{
-          top: "-50%",
-          left: "-50%",
-          width: "200%",
-          height: "200%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start",
-          gap: "120px",
-          transform: "rotate(-35deg)",
-          transformOrigin: "center center",
-        }}
-      >
-        {Array.from({ length: 40 }, (_, i) => (
-          <div
-            key={i}
-            className="whitespace-nowrap font-sans text-[18px] font-semibold tracking-wide"
-            style={{
-              color: "rgba(40, 45, 60, 0.28)",
-              textAlign: "center",
-              userSelect: "none",
-            }}
-          >
-            {text}
-          </div>
-        ))}
-      </div>
-    </div>
+    />
   );
 }
 
