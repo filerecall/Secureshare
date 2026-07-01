@@ -412,38 +412,38 @@ function WatermarkOverlay({ text }: { text: string }) {
   return (
     <div
       className="pointer-events-none absolute inset-0 overflow-hidden"
-      style={{ zIndex: 10 }}
+      style={{ zIndex: 10, top: 0, bottom: 0, left: 0, right: 0, position: "absolute" }}
       aria-hidden
     >
       <div
-        className="absolute inset-0"
+        className="absolute"
         style={{
-          backgroundImage: `repeating-linear-gradient(
-            -35deg,
-            transparent,
-            transparent 120px,
-            rgba(0,0,0,0.03) 120px,
-            rgba(0,0,0,0.03) 121px
-          )`,
+          top: "-50%",
+          left: "-50%",
+          width: "200%",
+          height: "200%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-start",
+          gap: "120px",
+          transform: "rotate(-35deg)",
+          transformOrigin: "center center",
         }}
-      />
-      {Array.from({ length: 16 }, (_, i) => (
-        <div
-          key={i}
-          className="absolute whitespace-nowrap font-sans text-[18px] font-semibold tracking-wide"
-          style={{
-            color: "rgba(40, 45, 60, 0.28)",
-            transform: "rotate(-35deg)",
-            top: `${i * 150 - 200}px`,
-            left: "-20%",
-            width: "160%",
-            textAlign: "center",
-            userSelect: "none",
-          }}
-        >
-          {text}
-        </div>
-      ))}
+      >
+        {Array.from({ length: 40 }, (_, i) => (
+          <div
+            key={i}
+            className="whitespace-nowrap font-sans text-[18px] font-semibold tracking-wide"
+            style={{
+              color: "rgba(40, 45, 60, 0.28)",
+              textAlign: "center",
+              userSelect: "none",
+            }}
+          >
+            {text}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
