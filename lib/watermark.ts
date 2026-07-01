@@ -14,16 +14,17 @@ export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): P
 
   for (const page of pdf.getPages()) {
     const { width, height } = page.getSize();
-    const fontSize = Math.min(30, Math.max(16, width / 22));
+    const fontSize = Math.min(36, Math.max(20, width / 18));
     const textWidth = helvetica.widthOfTextAtSize(stamp, fontSize);
 
-    const cols = Math.ceil(width / (textWidth * 0.85)) + 1;
-    const rowGap = fontSize * 8;
+    const colGap = textWidth * 0.9;
+    const cols = Math.ceil(width / colGap) + 1;
+    const rowGap = fontSize * 9;
     const rows = Math.ceil(height / rowGap) + 2;
 
     for (let r = -1; r < rows; r++) {
       for (let c = -1; c < cols; c++) {
-        const x = c * textWidth * 0.8 + (r % 2 === 0 ? 0 : textWidth * 0.4);
+        const x = c * colGap + (r % 2 === 0 ? 0 : colGap * 0.4);
         const y = r * rowGap;
 
         page.drawText(stamp, {
@@ -31,9 +32,9 @@ export async function watermarkPdf(input: Uint8Array, opts: WatermarkOptions): P
           y,
           size: fontSize,
           font: helvetica,
-          color: rgb(0.15, 0.15, 0.22),
+          color: rgb(0, 0, 0),
           rotate: degrees(-35),
-          opacity: 0.85,
+          opacity: 0.55,
         });
       }
     }
