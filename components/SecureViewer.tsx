@@ -409,34 +409,49 @@ function highlightSearchText(text: string, query: string): string {
 }
 
 function WatermarkOverlay({ text }: { text: string }) {
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  const items: { top: number; left: number }[] = [];
+  const rowH = 160;
+  const colW = 380;
+  const rows = 50;
+  const cols = 4;
 
-  const charWidth = 9.5;
-  const textLen = text.length * charWidth;
-  const tileW = Math.max(500, Math.ceil(textLen) + 60);
-  const tileH = 180;
-  const cx = Math.round(tileW / 2);
-  const cy = Math.round(tileH / 2);
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}"><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" transform="rotate(-35,${cx},${cy})" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="rgba(40,45,60,0.28)">${escaped}</text></svg>`;
-
-  const bgUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const stagger = r % 2 === 0 ? 0 : colW * 0.5;
+      items.push({
+        top: r * rowH - 300,
+        left: c * colW + stagger - 400,
+      });
+    }
+  }
 
   return (
     <div
-      className="pointer-events-none absolute inset-0"
-      style={{
-        zIndex: 10,
-        backgroundImage: bgUrl,
-        backgroundRepeat: "repeat",
-        backgroundSize: `${tileW}px ${tileH}px`,
-      }}
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ zIndex: 10 }}
       aria-hidden
-    />
+    >
+      {items.map((pos, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            top: `${pos.top}px`,
+            left: `${pos.left}px`,
+            transform: "rotate(-35deg)",
+            whiteSpace: "nowrap",
+            fontSize: "18px",
+            fontWeight: 600,
+            fontFamily: "Helvetica, Arial, sans-serif",
+            color: "rgba(40, 45, 60, 0.28)",
+            userSelect: "none",
+            letterSpacing: "0.5px",
+          }}
+        >
+          {text}
+        </span>
+      ))}
+    </div>
   );
 }
 
