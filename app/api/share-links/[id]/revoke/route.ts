@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { cleanupIfAllLinksInactive } from "@/lib/s3-cleanup";
 import type { ShareLinkRow } from "@/types/database";
 
 /**
@@ -45,6 +46,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   if (updateError || !updated) {
     return NextResponse.json({ error: "Failed to revoke link" }, { status: 500 });
   }
+
+  void cleanupIfAllLinksInactive(updated.document_id);
 
   return NextResponse.json({ shareLink: updated });
 }

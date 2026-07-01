@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cleanupIfAllLinksInactive } from "@/lib/s3-cleanup";
 import type { AccessEventType, Database, DocumentRow, ShareLinkRow } from "@/types/database";
 
 export type ShareLinkBlockReason = "not_found" | "revoked" | "expired" | "already_viewed";
@@ -37,13 +38,12 @@ export async function lookupShareLink(token: string): Promise<ShareLinkLookup> {
   }
 
   if (shareLink.expires_at && new Date(shareLink.expires_at).getTime() <= Date.now()) {
+    void cleanupIfAllLinksInactive(shareLink.document_id);
     return { ok: false, reason: "expired", shareLinkId: shareLink.id };
   }
 
-  // first_view links are consumed by the first successful page load. The
-  // recipient page calls markFirstViewed() after this lookup succeeds; on
-  // every subsequent request that field is non-null and we deny access.
   if (shareLink.expiry_type === "first_view" && shareLink.first_viewed_at) {
+    void cleanupIfAllLinksInactive(shareLink.document_id);
     return { ok: false, reason: "already_viewed", shareLinkId: shareLink.id };
   }
 
