@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import { unstable_noStore as noStore } from "next/cache";
+import { cookies } from "next/headers";
 import { Lock, ShieldOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Logo } from "@/components/Logo";
+import { RecipientVerification } from "@/components/RecipientVerification";
 import { SecureViewer } from "@/components/SecureViewer";
+import {
+  requiresVerification,
+  verificationCookieName,
+  verifySession,
+} from "@/lib/recipient-verification";
 import { getSenderPlan, shouldShowFreeBranding } from "@/lib/sender-plan";
 import {
   logAccessEvent,
@@ -52,6 +59,24 @@ export default async function RecipientPage({ params }: PageProps) {
   }
 
   const { shareLink, document } = lookup;
+
+  // Recipient verification runs BEFORE anything is consumed or logged. A
+  // stranger holding a forwarded link must not burn the recipient's single
+  // view, and an unopened document must not show as "viewed" in the audit
+  // log just because someone landed on the gate.
+  if (requiresVerification(shareLink)) {
+    const cookie = cookies().get(verificationCookieName(shareLink.id))?.value;
+    if (!verifySession(cookie, shareLink.id)) {
+      return (
+        <RecipientShell freeBranding={shouldShowFreeBranding(await getSenderPlan(document.user_id))}>
+          <RecipientVerification
+            token={params.token}
+            recipientHint={maskEmail(shareLink.recipient_email)}
+          />
+        </RecipientShell>
+      );
+    }
+  }
 
   await markFirstViewed(shareLink);
   await logAccessEvent(shareLink.id, "viewed");
@@ -226,6 +251,21 @@ function BlockedCard({ reason }: { reason: ShareLinkBlockReason }) {
       </div>
     </Card>
   );
+}
+
+/**
+ * "robert@example.com" -> "r••••••@example.com".
+ *
+ * Enough for the real recipient to recognise their own address, not enough
+ * for a stranger holding a forwarded link to learn who it belongs to.
+ */
+function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at <= 0) return "your email address";
+  const local = email.slice(0, at);
+  const domain = email.slice(at);
+  if (local.length <= 1) return `${local}${"•".repeat(3)}${domain}`;
+  return `${local[0]}${"•".repeat(Math.min(local.length - 1, 6))}${domain}`;
 }
 
 function formatDate(iso: string): string {

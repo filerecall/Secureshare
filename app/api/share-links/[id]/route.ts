@@ -9,6 +9,8 @@ const MAX_EXPIRY_DAYS = 365;
 interface PatchBody {
   expiryType: ExpiryType;
   expiryDays?: number;
+  /** Omitted means "leave the current setting alone". */
+  requireEmailVerification?: boolean;
 }
 
 type Validated = { ok: true; value: PatchBody } | { ok: false; error: string };
@@ -33,7 +35,18 @@ function validate(raw: unknown): Validated {
     expiryDays = b.expiryDays;
   }
 
-  return { ok: true, value: { expiryType, expiryDays } };
+  if (b.requireEmailVerification !== undefined && typeof b.requireEmailVerification !== "boolean") {
+    return { ok: false, error: "Invalid verification setting" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      expiryType,
+      expiryDays,
+      requireEmailVerification: b.requireEmailVerification as boolean | undefined,
+    },
+  };
 }
 
 /**
@@ -64,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       { status: 400 },
     );
   }
-  const { expiryType, expiryDays } = body.value;
+  const { expiryType, expiryDays, requireEmailVerification } = body.value;
 
   // Read the row first so we can refuse to edit a revoked link (no point).
   const { data: existing, error: fetchError } = await supabase
@@ -91,6 +104,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       expiry_type: expiryType,
       expiry_days: expiryDays ?? null,
       expires_at: expiresAt,
+      // Only written when the client actually sent the field, so an edit that
+      // only changes expiry can't silently switch verification off.
+      ...(requireEmailVerification === undefined
+        ? {}
+        : { require_email_verification: requireEmailVerification }),
       // If they switch to first_view and the link was already used once
       // under an older policy, leave first_viewed_at alone. Otherwise reset
       // it so the user gets a clean "still pending" state.

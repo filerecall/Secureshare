@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Check, Copy, Loader2, Pencil, ShieldOff, X } from "lucide-react";
+import { Check, Copy, Loader2, MailCheck, Pencil, ShieldOff, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormMessage } from "@/components/ui/FormMessage";
@@ -37,6 +37,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
   // Create-new form state
   const [recipientEmail, setRecipientEmail] = useState("");
   const [optionIndex, setOptionIndex] = useState(1);
+  const [requireVerification, setRequireVerification] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   // Surfaces a warning when the link was created but the recipient email
@@ -56,6 +57,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
   // status display for an inline expiry picker.
   const [editingExpiryForId, setEditingExpiryForId] = useState<string | null>(null);
   const [editingOptionIndex, setEditingOptionIndex] = useState(1);
+  const [editingRequireVerification, setEditingRequireVerification] = useState(false);
   const [savingExpiry, setSavingExpiry] = useState(false);
   const [editExpiryError, setEditExpiryError] = useState<string | null>(null);
 
@@ -87,6 +89,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
     if (open) {
       setRecipientEmail("");
       setOptionIndex(1);
+      setRequireVerification(false);
       setCreateError(null);
       setCreating(false);
       setEmailWarning(null);
@@ -109,6 +112,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
       return link.expiry_type === "days" && link.expiry_days === opt.days;
     });
     setEditingOptionIndex(matchIndex >= 0 ? matchIndex : 1);
+    setEditingRequireVerification(link.require_email_verification === true);
     setEditingExpiryForId(link.id);
     setEditExpiryError(null);
   }
@@ -123,7 +127,10 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
 
     setSavingExpiry(true);
     try {
-      const body: Record<string, unknown> = { expiryType: option.kind };
+      const body: Record<string, unknown> = {
+        expiryType: option.kind,
+        requireEmailVerification: editingRequireVerification,
+      };
       if (option.kind === "days") body.expiryDays = option.days;
 
       const res = await fetch(`/api/share-links/${linkId}`, {
@@ -160,6 +167,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
       const body: Record<string, unknown> = {
         recipientEmail,
         expiryType: option.kind satisfies ExpiryType,
+        requireEmailVerification: requireVerification,
       };
       if (option.kind === "days") body.expiryDays = option.days;
 
@@ -295,6 +303,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
                     copied={copiedId === link.id}
                     editing={editingExpiryForId === link.id}
                     editingOptionIndex={editingOptionIndex}
+                    editingRequireVerification={editingRequireVerification}
                     saving={savingExpiry && editingExpiryForId === link.id}
                     editError={editingExpiryForId === link.id ? editExpiryError : null}
                     onCopy={() => copyLink(link)}
@@ -307,6 +316,7 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
                       setEditExpiryError(null);
                     }}
                     onChangeEditOption={(i) => setEditingOptionIndex(i)}
+                    onChangeEditVerification={(v) => setEditingRequireVerification(v)}
                     onSaveEdit={() => saveExpiry(link.id)}
                   />
                 ))}
@@ -364,6 +374,25 @@ export function ShareDialog({ open, onClose, documentId, documentName }: Props) 
                   You can revoke any link at any time, regardless of the expiry rule.
                 </p>
               </div>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <input
+                  type="checkbox"
+                  checked={requireVerification}
+                  onChange={(e) => setRequireVerification(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-slate-800">
+                    Require email verification
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-600">
+                    The reader must enter a 6-digit code we email to the recipient address.
+                    A forwarded link won&apos;t open for anyone else.
+                  </span>
+                </span>
+              </label>
+
               <Button type="submit" loading={creating} fullWidth>
                 Create secure link
               </Button>
@@ -382,6 +411,7 @@ interface ShareLinkItemProps {
   copied: boolean;
   editing: boolean;
   editingOptionIndex: number;
+  editingRequireVerification: boolean;
   saving: boolean;
   editError: string | null;
   onCopy: () => void;
@@ -391,6 +421,7 @@ interface ShareLinkItemProps {
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onChangeEditOption: (index: number) => void;
+  onChangeEditVerification: (value: boolean) => void;
   onSaveEdit: () => void;
 }
 
@@ -401,6 +432,7 @@ function ShareLinkItem({
   copied,
   editing,
   editingOptionIndex,
+  editingRequireVerification,
   saving,
   editError,
   onCopy,
@@ -410,6 +442,7 @@ function ShareLinkItem({
   onRequestEdit,
   onCancelEdit,
   onChangeEditOption,
+  onChangeEditVerification,
   onSaveEdit,
 }: ShareLinkItemProps) {
   const status = computeStatus(link);
@@ -424,6 +457,12 @@ function ShareLinkItem({
             {link.recipient_email}
           </p>
           <p className="mt-0.5 text-xs text-slate-500">{describeExpiry(link, status)}</p>
+          {link.require_email_verification ? (
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-slate-600">
+              <MailCheck className="h-3 w-3 text-emerald-600" aria-hidden />
+              Email verification on
+            </p>
+          ) : null}
         </div>
         <StatusBadge status={status} />
       </div>
@@ -445,6 +484,23 @@ function ShareLinkItem({
               ))}
             </select>
           </label>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-white p-2.5">
+            <input
+              type="checkbox"
+              checked={editingRequireVerification}
+              onChange={(e) => onChangeEditVerification(e.target.checked)}
+              disabled={saving}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900"
+            />
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-slate-800">
+                Require email verification
+              </span>
+              <span className="mt-0.5 block text-[11px] text-slate-600">
+                Reader must enter a code emailed to {link.recipient_email}.
+              </span>
+            </span>
+          </label>
           {editError ? <p className="text-xs text-red-600">{editError}</p> : null}
           <p className="text-[11px] text-slate-500">
             Days-based expiry restarts from now. Switching to first view leaves any past
@@ -455,7 +511,7 @@ function ShareLinkItem({
               Cancel
             </Button>
             <Button size="sm" variant="primary" onClick={onSaveEdit} loading={saving}>
-              Save expiry
+              Save changes
             </Button>
           </div>
         </div>

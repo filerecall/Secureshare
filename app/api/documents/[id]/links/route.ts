@@ -38,6 +38,7 @@ interface CreateShareLinkBody {
   recipientEmail: string;
   expiryType: ExpiryType;
   expiryDays?: number;
+  requireEmailVerification: boolean;
 }
 
 const EXPIRY_TYPES: readonly ExpiryType[] = ["days", "first_view", "manual"] as const;
@@ -77,7 +78,13 @@ function validate(raw: unknown): ValidationResult {
     expiryDays = b.expiryDays;
   }
 
-  return { ok: true, value: { recipientEmail, expiryType, expiryDays } };
+  // Absent means off. Anything other than a boolean is a malformed client.
+  if (b.requireEmailVerification !== undefined && typeof b.requireEmailVerification !== "boolean") {
+    return { ok: false, error: "Invalid verification setting" };
+  }
+  const requireEmailVerification = b.requireEmailVerification === true;
+
+  return { ok: true, value: { recipientEmail, expiryType, expiryDays, requireEmailVerification } };
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { status: 400 },
     );
   }
-  const { recipientEmail, expiryType, expiryDays } = result.value;
+  const { recipientEmail, expiryType, expiryDays, requireEmailVerification } = result.value;
 
   // Confirm the document exists, belongs to this user, and is still active.
   // RLS will reject the read for documents the user doesn't own, so a null
@@ -141,6 +148,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       expiry_type: expiryType,
       expiry_days: expiryDays ?? null,
       expires_at: expiresAt,
+      require_email_verification: requireEmailVerification,
     })
     .select()
     .single<ShareLinkRow>();
@@ -160,6 +168,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     documentName: document.file_name,
     shareUrl,
     expiryDescription: describeExpiry(expiryType, expiryDays, expiresAt),
+    requiresCode: requireEmailVerification,
   });
 
   return NextResponse.json({

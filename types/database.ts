@@ -42,6 +42,24 @@ export type ShareLinkRow = {
   expires_at: string | null;
   revoked_at: string | null;
   first_viewed_at: string | null;
+  /**
+   * When true the opener must prove control of `recipient_email` with an
+   * emailed code before the document is served. Optional in the type because
+   * the column arrives in migration 0003 - a database that hasn't been
+   * migrated yet simply reports undefined, which reads as "off".
+   */
+  require_email_verification?: boolean;
+  created_at: string;
+};
+
+export type LinkVerificationCodeRow = {
+  id: string;
+  share_link_id: string;
+  code_hash: string;
+  attempts: number;
+  expires_at: string;
+  consumed_at: string | null;
+  ip_address: string | null;
   created_at: string;
 };
 
@@ -100,8 +118,18 @@ export interface Database {
           | "expires_at"
           | "revoked_at"
           | "first_viewed_at"
+          | "require_email_verification"
         >;
         Update: Partial<ShareLinkRow>;
+        Relationships: [];
+      };
+      link_verification_codes: {
+        Row: LinkVerificationCodeRow;
+        Insert: Optional<
+          LinkVerificationCodeRow,
+          "id" | "created_at" | "attempts" | "consumed_at" | "ip_address"
+        >;
+        Update: Partial<LinkVerificationCodeRow>;
         Relationships: [];
       };
       access_events: {

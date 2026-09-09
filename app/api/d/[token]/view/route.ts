@@ -4,6 +4,11 @@ import mammoth from "mammoth";
 import { env } from "@/lib/env";
 import { sendViewNotificationEmail } from "@/lib/email/view-notification-email";
 import { parsePptx } from "@/lib/pptx-parser";
+import {
+  requiresVerification,
+  verificationCookieName,
+  verifySession,
+} from "@/lib/recipient-verification";
 import { getS3Client } from "@/lib/s3";
 import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,6 +31,17 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
   }
 
   const { shareLink, document } = lookup;
+
+  // The page-level gate is a UI affordance; this is the security boundary.
+  // Someone who skips the page and calls this endpoint directly gets nothing
+  // without the verification cookie.
+  if (requiresVerification(shareLink)) {
+    const cookie = req.cookies.get(verificationCookieName(shareLink.id))?.value;
+    if (!verifySession(cookie, shareLink.id)) {
+      await logAccessEvent(shareLink.id, "blocked");
+      return NextResponse.json({ error: "Verification required" }, { status: 403 });
+    }
+  }
 
   if (!document.s3_key) {
     return NextResponse.json({ error: "Document is not ready" }, { status: 409 });

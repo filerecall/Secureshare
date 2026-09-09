@@ -8,6 +8,8 @@ interface SendShareLinkEmailOptions {
   documentName: string;
   shareUrl: string;
   expiryDescription: string;
+  /** Link is recipient-verified: warn them a one-time code is part of opening it. */
+  requiresCode?: boolean;
 }
 
 export interface SendShareLinkEmailResult {
@@ -96,7 +98,14 @@ function renderShareLinkHtml({
   documentName,
   shareUrl,
   expiryDescription,
+  requiresCode,
 }: SendShareLinkEmailOptions): string {
+  const codeNotice = requiresCode
+    ? `<p style="margin:0 0 12px;color:#0f172a;font-size:12px;line-height:1.6;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
+                <strong>One extra step:</strong> when you open the link we'll email a 6-digit code
+                to this address. Enter it to view the document.
+              </p>`
+    : "";
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -133,6 +142,7 @@ function renderShareLinkHtml({
           </tr>
           <tr>
             <td style="padding:16px 28px 32px;">
+              ${codeNotice}
               <p style="margin:0;color:#64748b;font-size:12px;line-height:1.6;">
                 The link is tokenised and only works for the recipient address above. If you weren't expecting this, you can safely ignore the email.
               </p>
@@ -154,6 +164,7 @@ function renderShareLinkText({
   documentName,
   shareUrl,
   expiryDescription,
+  requiresCode,
 }: SendShareLinkEmailOptions): string {
   return [
     `${senderEmail} shared a document with you on FileRecall.`,
@@ -163,6 +174,12 @@ function renderShareLinkText({
     "",
     `Open: ${shareUrl}`,
     "",
+    ...(requiresCode
+      ? [
+          "One extra step: when you open the link we'll email a 6-digit code to this address. Enter it to view the document.",
+          "",
+        ]
+      : []),
     "The link is tokenised and only works for the recipient address above.",
   ].join("\n");
 }
