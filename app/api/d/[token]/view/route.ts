@@ -7,13 +7,16 @@ import { parsePptx } from "@/lib/pptx-parser";
 import { getS3Client } from "@/lib/s3";
 import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { VIEW_GRANT_PARAM } from "@/lib/view-grant";
 import { watermarkPdf } from "@/lib/watermark";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
-  const lookup = await lookupShareLink(params.token);
+  const lookup = await lookupShareLink(params.token, {
+    viewGrant: req.nextUrl.searchParams.get(VIEW_GRANT_PARAM),
+  });
 
   if (!lookup.ok) {
     if ("shareLinkId" in lookup && lookup.shareLinkId) {

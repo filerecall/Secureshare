@@ -3,9 +3,19 @@ import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanupIfAllLinksInactive } from "@/lib/s3-cleanup";
+import { verifyViewGrant } from "@/lib/view-grant";
 import type { AccessEventType, Database, DocumentRow, ShareLinkRow } from "@/types/database";
 
 export type ShareLinkBlockReason = "not_found" | "revoked" | "expired" | "already_viewed";
+
+export interface LookupOptions {
+  /**
+   * Signed grant minted by the recipient page for the browser that just
+   * consumed a 'first_view' link. Lets that same browser finish pulling the
+   * file it is already allowed to see. Ignored for every other expiry type.
+   */
+  viewGrant?: string | null;
+}
 
 export type ShareLinkLookup =
   | { ok: true; shareLink: ShareLinkRow; document: DocumentRow }
@@ -18,7 +28,10 @@ export type ShareLinkLookup =
  * RLS would otherwise reject the read. The token itself is the authn factor:
  * it's 256 bits of entropy and only the sender's recipient knows it.
  */
-export async function lookupShareLink(token: string): Promise<ShareLinkLookup> {
+export async function lookupShareLink(
+  token: string,
+  options: LookupOptions = {},
+): Promise<ShareLinkLookup> {
   if (!token || token.length < 32) return { ok: false, reason: "not_found" };
 
   const admin = createAdminClient();
@@ -43,8 +56,13 @@ export async function lookupShareLink(token: string): Promise<ShareLinkLookup> {
   }
 
   if (shareLink.expiry_type === "first_view" && shareLink.first_viewed_at) {
-    void cleanupIfAllLinksInactive(shareLink.document_id);
-    return { ok: false, reason: "already_viewed", shareLinkId: shareLink.id };
+    // The browser that consumed the view is still allowed to finish loading
+    // it. Everyone else - including that browser after the grant expires -
+    // is blocked.
+    if (!verifyViewGrant(options.viewGrant, shareLink.id)) {
+      void cleanupIfAllLinksInactive(shareLink.document_id);
+      return { ok: false, reason: "already_viewed", shareLinkId: shareLink.id };
+    }
   }
 
   const { data: document, error: docError } = await admin

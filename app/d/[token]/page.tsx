@@ -11,6 +11,7 @@ import {
   markFirstViewed,
   type ShareLinkBlockReason,
 } from "@/lib/share-links";
+import { issueViewGrant } from "@/lib/view-grant";
 
 export const metadata: Metadata = {
   title: "Secure document - FileRecall",
@@ -55,6 +56,11 @@ export default async function RecipientPage({ params }: PageProps) {
   await markFirstViewed(shareLink);
   await logAccessEvent(shareLink.id, "viewed");
 
+  // Consuming a 'first_view' link here would otherwise lock the viewer out of
+  // its own fetch a second later. The grant lets this browser finish the view
+  // it just paid for; it is signed, single-link scoped and short-lived.
+  const viewGrant = issueViewGrant(shareLink.id);
+
   const senderPlan = await getSenderPlan(document.user_id);
   const showFreeBranding = shouldShowFreeBranding(senderPlan);
   const isViewable = VIEWABLE_TYPES.has(document.mime_type);
@@ -77,6 +83,7 @@ export default async function RecipientPage({ params }: PageProps) {
           fileName={document.file_name}
           mimeType={document.mime_type}
           recipientEmail={shareLink.recipient_email}
+          viewGrant={viewGrant}
         />
       </ViewerShell>
     );

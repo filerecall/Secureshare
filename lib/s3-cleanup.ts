@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteDocumentObject } from "@/lib/s3";
+import { VIEW_GRANT_TTL_MS } from "@/lib/view-grant";
 
 export async function cleanupIfAllLinksInactive(documentId: string): Promise<void> {
   const admin = createAdminClient();
@@ -24,7 +25,15 @@ export async function cleanupIfAllLinksInactive(documentId: string): Promise<voi
   const allInactive = links.every((link) => {
     if (link.revoked_at) return true;
     if (link.expires_at && new Date(link.expires_at).getTime() <= now) return true;
-    if (link.expiry_type === "first_view" && link.first_viewed_at) return true;
+    if (link.expiry_type === "first_view" && link.first_viewed_at) {
+      // A just-consumed single-view link is still being read: the recipient's
+      // viewer fetches the bytes a moment after the page renders. Deleting the
+      // object now would break the one view they are entitled to, so treat it
+      // as active until the view grant window has closed.
+      const viewedAt = new Date(link.first_viewed_at).getTime();
+      if (Number.isFinite(viewedAt) && now - viewedAt < VIEW_GRANT_TTL_MS) return false;
+      return true;
+    }
     return false;
   });
 

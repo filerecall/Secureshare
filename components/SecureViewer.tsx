@@ -24,6 +24,11 @@ interface Props {
   fileName: string;
   mimeType: string;
   recipientEmail: string;
+  /**
+   * Signed proof this browser is the one that just opened the link. Required
+   * for single-view links, where the page render already consumed the view.
+   */
+  viewGrant?: string;
 }
 
 interface PptxSlide {
@@ -42,7 +47,7 @@ type ViewerState =
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 
-export function SecureViewer({ token, fileName }: Props) {
+export function SecureViewer({ token, fileName, viewGrant }: Props) {
   const [state, setState] = useState<ViewerState>({ status: "loading" });
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,7 +67,8 @@ export function SecureViewer({ token, fileName }: Props) {
 
     async function load() {
       try {
-        const res = await fetch(`/api/d/${token}/view`, { cache: "no-store" });
+        const query = viewGrant ? `?g=${encodeURIComponent(viewGrant)}` : "";
+        const res = await fetch(`/api/d/${token}/view${query}`, { cache: "no-store" });
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -113,7 +119,7 @@ export function SecureViewer({ token, fileName }: Props) {
         pdfUrlRef.current = null;
       }
     };
-  }, [token]);
+  }, [token, viewGrant]);
 
   // Auto-dismiss toast after 6 seconds
   useEffect(() => {
