@@ -5,10 +5,12 @@ import { env } from "@/lib/env";
 import { sendViewNotificationEmail } from "@/lib/email/view-notification-email";
 import { parsePptx } from "@/lib/pptx-parser";
 import {
+  issueVerificationSession,
   requiresVerification,
   verificationCookieName,
   verifySession,
 } from "@/lib/recipient-verification";
+import type { ShareLinkRow } from "@/types/database";
 import { getS3Client } from "@/lib/s3";
 import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,6 +19,29 @@ import { watermarkPdf } from "@/lib/watermark";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Push the verification window forward on every document actually served.
+ *
+ * Makes the window measure INACTIVITY rather than total time: someone reading
+ * a long contract is never interrupted, but a browser that stops asking for
+ * the document goes cold in SESSION_TTL_MS.
+ */
+function refreshVerification<T extends NextResponse>(res: T, shareLink: ShareLinkRow): T {
+  if (!requiresVerification(shareLink)) return res;
+
+  const session = issueVerificationSession(shareLink.id);
+  res.cookies.set({
+    name: verificationCookieName(shareLink.id),
+    value: session.value,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: session.maxAgeSeconds,
+  });
+  return res;
+}
 
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
   const lookup = await lookupShareLink(params.token, {
@@ -89,17 +114,20 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
       accessedAt: new Date().toISOString(),
     });
 
-    return new NextResponse(Buffer.from(watermarked), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": "inline",
-        "Content-Length": watermarked.byteLength.toString(),
-        "Cache-Control": "no-store, no-cache, must-revalidate",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'none'",
-      },
-    });
+    return refreshVerification(
+      new NextResponse(Buffer.from(watermarked), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": "inline",
+          "Content-Length": watermarked.byteLength.toString(),
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy": "default-src 'none'",
+        },
+      }),
+      shareLink,
+    );
   }
 
   if (
@@ -117,21 +145,24 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
       },
     );
 
-    return NextResponse.json(
-      {
-        type: "docx",
-        html: result.value,
-        watermark: {
-          recipientEmail: shareLink.recipient_email,
-          accessedAt: new Date().toISOString(),
+    return refreshVerification(
+      NextResponse.json(
+        {
+          type: "docx",
+          html: result.value,
+          watermark: {
+            recipientEmail: shareLink.recipient_email,
+            accessedAt: new Date().toISOString(),
+          },
         },
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          "X-Content-Type-Options": "nosniff",
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Content-Type-Options": "nosniff",
+          },
         },
-      },
+      ),
+      shareLink,
     );
   }
 
@@ -141,42 +172,48 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
   ) {
     const slides = await parsePptx(Buffer.from(inputBytes));
 
-    return NextResponse.json(
-      {
-        type: "pptx",
-        slides,
-        watermark: {
-          recipientEmail: shareLink.recipient_email,
-          accessedAt: new Date().toISOString(),
+    return refreshVerification(
+      NextResponse.json(
+        {
+          type: "pptx",
+          slides,
+          watermark: {
+            recipientEmail: shareLink.recipient_email,
+            accessedAt: new Date().toISOString(),
+          },
         },
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          "X-Content-Type-Options": "nosniff",
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Content-Type-Options": "nosniff",
+          },
         },
-      },
+      ),
+      shareLink,
     );
   }
 
   if (mimeType === "text/plain" || mimeType === "text/csv") {
     const text = new TextDecoder().decode(inputBytes);
 
-    return NextResponse.json(
-      {
-        type: "text",
-        content: text,
-        watermark: {
-          recipientEmail: shareLink.recipient_email,
-          accessedAt: new Date().toISOString(),
+    return refreshVerification(
+      NextResponse.json(
+        {
+          type: "text",
+          content: text,
+          watermark: {
+            recipientEmail: shareLink.recipient_email,
+            accessedAt: new Date().toISOString(),
+          },
         },
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          "X-Content-Type-Options": "nosniff",
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Content-Type-Options": "nosniff",
+          },
         },
-      },
+      ),
+      shareLink,
     );
   }
 

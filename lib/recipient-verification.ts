@@ -16,8 +16,14 @@ import type { LinkVerificationCodeRow, ShareLinkRow } from "@/types/database";
 
 /** How long a code stays usable. */
 export const CODE_TTL_MS = 10 * 60 * 1000;
-/** How long a passed verification lasts before the reader must do it again. */
-export const SESSION_TTL_MS = 30 * 60 * 1000;
+/**
+ * How long a passed verification lasts before the reader must do it again.
+ *
+ * This is an INACTIVITY window, not a hard cap: every served page refreshes
+ * it, so a long read never gets interrupted, while a browser left alone -
+ * or one that got the link second-hand - goes cold quickly.
+ */
+export const SESSION_TTL_MS = 15 * 60 * 1000;
 /** Wrong guesses allowed against a single code before it dies. */
 export const MAX_ATTEMPTS = 5;
 /** Codes we'll send for one link in a rolling hour. Caps email abuse. */
