@@ -6,7 +6,9 @@ import { Logo } from "@/components/Logo";
 const HIGHLIGHTS = [
   {
     icon: Lock,
-    title: "Encrypted end to end",
+    // NOT "end to end": the server decrypts every file to render and
+    // watermark it, so we can read it and must not claim otherwise.
+    title: "Encrypted in transit and at rest",
     body: "AES-256 at rest, TLS 1.3 in transit. Your files are protected the moment they land.",
   },
   {

@@ -3,8 +3,12 @@ import { Check } from "lucide-react";
 // Numbers map to real capabilities of the platform: AES-256 server-side
 // encryption, 100% of recipient access goes through access_events, and
 // revocation is a single update query.
+//
+// Keep these claims literally true. "End to end" was here and was wrong:
+// end-to-end encryption means the provider cannot read the content, and this
+// product has to read every file to render and watermark it.
 const stats = [
-  { value: "AES-256", label: "Encryption at rest, end to end" },
+  { value: "AES-256", label: "Encryption at rest, enforced on every upload" },
   { value: "100%", label: "Of views captured in the audit log" },
   { value: "<1s", label: "From revoke click to recipient blocked" },
 ];

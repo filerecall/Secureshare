@@ -109,7 +109,7 @@ export default async function RecipientPage({ params }: PageProps) {
           />
           <p className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500">
             <Lock className="h-3 w-3 text-emerald-600" aria-hidden />
-            End-to-end secured
+            Encrypted connection
           </p>
         </div>
         <SecureViewer

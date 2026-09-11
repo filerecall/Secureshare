@@ -21,7 +21,7 @@ export function Hero() {
           <div className="flex flex-col items-start">
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-              End-to-end secure document delivery
+              Secure document delivery, never as a file
             </span>
 
             <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
