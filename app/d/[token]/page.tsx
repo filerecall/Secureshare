@@ -35,8 +35,17 @@ const VIEWABLE_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "application/zip",
   "text/plain",
   "text/csv",
+  // Note: legacy .xls and .doc are deliberately absent. They're not zip-based
+  // and nothing here can read them, so they get the "can't be viewed" card
+  // rather than a viewer that fails once it's loaded.
 ]);
 
 interface PageProps {

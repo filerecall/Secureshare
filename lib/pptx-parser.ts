@@ -11,6 +11,10 @@ export interface PptxSlide {
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
+  // PowerPoint writes non-ASCII as numeric character references (&#233;, and
+  // &#8217; for the curly apostrophe Office autocorrects into). Without this
+  // the recipient sees "caf&#233;" and "don&#8217;t" on the slide.
+  htmlEntities: true,
 });
 
 export async function parsePptx(buffer: Buffer): Promise<PptxSlide[]> {

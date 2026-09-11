@@ -37,17 +37,33 @@ interface PptxSlide {
   images: { src: string }[];
 }
 
+interface XlsxSheet {
+  name: string;
+  rows: string[][];
+  truncated: boolean;
+  totalRows: number;
+}
+
+interface ZipEntry {
+  name: string;
+  size: number | null;
+  isDirectory: boolean;
+}
+
 type ViewerState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "pdf"; url: string }
   | { status: "docx"; html: string; watermarkText: string }
   | { status: "text"; content: string; watermarkText: string }
-  | { status: "pptx"; slides: PptxSlide[]; watermarkText: string };
+  | { status: "pptx"; slides: PptxSlide[]; watermarkText: string }
+  | { status: "xlsx"; sheets: XlsxSheet[]; watermarkText: string }
+  | { status: "image"; url: string; watermarkText: string }
+  | { status: "zip"; entries: ZipEntry[]; truncated: boolean; watermarkText: string };
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 
-export function SecureViewer({ token, fileName, viewGrant }: Props) {
+export function SecureViewer({ token, fileName, recipientEmail, viewGrant }: Props) {
   const [state, setState] = useState<ViewerState>({ status: "loading" });
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,6 +71,7 @@ export function SecureViewer({ token, fileName, viewGrant }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSheet, setActiveSheet] = useState(0);
   const [toastVisible, setToastVisible] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfUrlRef = useRef<string | null>(null);
@@ -84,6 +101,17 @@ export function SecureViewer({ token, fileName, viewGrant }: Props) {
           const url = URL.createObjectURL(blob);
           pdfUrlRef.current = url;
           setState({ status: "pdf", url });
+        } else if (contentType.startsWith("image/")) {
+          // Same blob-URL trick as the PDF: the bytes stay in memory and the
+          // watermark sits over the top, so there's no addressable file.
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          pdfUrlRef.current = url;
+          setState({
+            status: "image",
+            url,
+            watermarkText: `FileRecall | ${recipientEmail} | ${new Date().toISOString()}`,
+          });
         } else {
           const data = await res.json();
           if (data.type === "docx") {
@@ -96,6 +124,17 @@ export function SecureViewer({ token, fileName, viewGrant }: Props) {
           } else if (data.type === "text") {
             const wm = `FileRecall | ${data.watermark.recipientEmail} | ${data.watermark.accessedAt}`;
             setState({ status: "text", content: data.content, watermarkText: wm });
+          } else if (data.type === "xlsx") {
+            const wm = `FileRecall | ${data.watermark.recipientEmail} | ${data.watermark.accessedAt}`;
+            setState({ status: "xlsx", sheets: data.sheets, watermarkText: wm });
+          } else if (data.type === "zip") {
+            const wm = `FileRecall | ${data.watermark.recipientEmail} | ${data.watermark.accessedAt}`;
+            setState({
+              status: "zip",
+              entries: data.entries,
+              truncated: data.truncated,
+              watermarkText: wm,
+            });
           } else {
             throw new Error("Unsupported format");
           }
@@ -119,7 +158,7 @@ export function SecureViewer({ token, fileName, viewGrant }: Props) {
         pdfUrlRef.current = null;
       }
     };
-  }, [token, viewGrant]);
+  }, [token, viewGrant, recipientEmail]);
 
   // Auto-dismiss toast after 6 seconds
   useEffect(() => {
@@ -406,6 +445,30 @@ export function SecureViewer({ token, fileName, viewGrant }: Props) {
           )}
           {state.status === "text" && (
             <TextContent content={state.content} watermarkText={state.watermarkText} scale={scale} />
+          )}
+          {state.status === "xlsx" && (
+            <XlsxContent
+              sheets={state.sheets}
+              activeSheet={activeSheet}
+              onSelectSheet={setActiveSheet}
+              watermarkText={state.watermarkText}
+              scale={scale}
+            />
+          )}
+          {state.status === "image" && (
+            <ImageContent
+              url={state.url}
+              fileName={fileName}
+              watermarkText={state.watermarkText}
+              scale={scale}
+            />
+          )}
+          {state.status === "zip" && (
+            <ZipContent
+              entries={state.entries}
+              truncated={state.truncated}
+              watermarkText={state.watermarkText}
+            />
           )}
         </div>
       </div>
@@ -805,6 +868,203 @@ function DocxContent({
       </div>
     </div>
   );
+}
+
+function XlsxContent({
+  sheets,
+  activeSheet,
+  onSelectSheet,
+  watermarkText,
+  scale,
+}: {
+  sheets: XlsxSheet[];
+  activeSheet: number;
+  onSelectSheet: (index: number) => void;
+  watermarkText: string;
+  scale: number;
+}) {
+  const sheet = sheets[activeSheet] ?? sheets[0];
+
+  if (!sheet) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <p className="text-sm text-slate-500">This workbook has no sheets.</p>
+      </div>
+    );
+  }
+
+  // First row is treated as a header when it looks like one: every cell filled
+  // and no obvious numbers. Spreadsheets almost always start this way.
+  const [firstRow, ...bodyRows] = sheet.rows;
+  const looksLikeHeader =
+    !!firstRow &&
+    firstRow.length > 0 &&
+    firstRow.some((c) => c !== "") &&
+    firstRow.every((c) => c === "" || Number.isNaN(Number(c)));
+
+  const headerRow = looksLikeHeader ? firstRow : null;
+  const dataRows = looksLikeHeader ? bodyRows : sheet.rows;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-auto p-4">
+        <div
+          className="relative inline-block min-w-full rounded-sm bg-white shadow-md"
+          style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
+        >
+          <WatermarkOverlay text={watermarkText} />
+          <table className="select-none border-collapse text-sm" style={{ userSelect: "none" }}>
+            {headerRow ? (
+              <thead>
+                <tr>
+                  <th className="sticky left-0 top-0 z-10 border border-slate-200 bg-slate-100 px-2 py-1.5 text-[11px] font-medium text-slate-400" />
+                  {headerRow.map((cell, i) => (
+                    <th
+                      key={i}
+                      className="border border-slate-200 bg-slate-100 px-3 py-1.5 text-left font-semibold text-slate-800"
+                    >
+                      {cell}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            ) : null}
+            <tbody>
+              {dataRows.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 ? "bg-slate-50/60" : "bg-white"}>
+                  {/* Row numbers matter in a spreadsheet - "check row 42" has
+                      to mean something to the recipient. */}
+                  <td className="sticky left-0 border border-slate-200 bg-slate-100 px-2 py-1 text-right text-[11px] text-slate-400">
+                    {rowIndex + (headerRow ? 2 : 1)}
+                  </td>
+                  {row.map((cell, colIndex) => (
+                    <td
+                      key={colIndex}
+                      className={`whitespace-pre border border-slate-200 px-3 py-1 text-slate-700 ${
+                        cell !== "" && !Number.isNaN(Number(cell)) ? "text-right tabular-nums" : ""
+                      }`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {sheet.truncated ? (
+            <p className="border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Large sheet: showing the first {dataRows.length} of {sheet.totalRows} rows.
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {sheets.length > 1 && (
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-slate-200 bg-slate-50 px-3 py-1.5">
+          {sheets.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => onSelectSheet(i)}
+              className={`shrink-0 rounded-t-md px-3 py-1.5 text-xs font-medium transition ${
+                i === activeSheet
+                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+                  : "text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImageContent({
+  url,
+  fileName,
+  watermarkText,
+  scale,
+}: {
+  url: string;
+  fileName: string;
+  watermarkText: string;
+  scale: number;
+}) {
+  return (
+    <div className="flex min-h-full items-center justify-center p-4">
+      <div
+        className="relative inline-block bg-white shadow-md"
+        style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}
+      >
+        <WatermarkOverlay text={watermarkText} />
+        {/* Plain <img>, not next/image: the source is an in-memory blob URL
+            that the optimiser can't fetch or cache. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={fileName}
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
+          className="block max-h-[80dvh] max-w-full select-none object-contain"
+          style={{ userSelect: "none" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ZipContent({
+  entries,
+  truncated,
+  watermarkText,
+}: {
+  entries: ZipEntry[];
+  truncated: boolean;
+  watermarkText: string;
+}) {
+  const files = entries.filter((e) => !e.isDirectory);
+
+  return (
+    <div className="flex justify-center p-4">
+      <div className="relative w-full max-w-[850px] rounded-sm bg-white shadow-md">
+        <WatermarkOverlay text={watermarkText} />
+        <div className="select-none px-8 py-8" style={{ userSelect: "none" }}>
+          <h2 className="text-base font-semibold text-slate-900">Archive contents</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {files.length} file{files.length === 1 ? "" : "s"} inside this archive. Contents are
+            listed for reference - nothing is extracted or downloadable.
+          </p>
+
+          <ul className="mt-5 divide-y divide-slate-100 rounded-lg border border-slate-200">
+            {files.map((entry, i) => (
+              <li key={i} className="flex items-center gap-3 px-3 py-2">
+                <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{entry.name}</span>
+                <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                  {formatBytes(entry.size)}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {truncated ? (
+            <p className="mt-3 text-xs text-amber-700">
+              Large archive: only the first {files.length} entries are listed.
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function TextContent({

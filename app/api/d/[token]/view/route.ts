@@ -16,9 +16,13 @@ import { logAccessEvent, lookupShareLink } from "@/lib/share-links";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { VIEW_GRANT_PARAM } from "@/lib/view-grant";
 import { watermarkPdf } from "@/lib/watermark";
+import { parseXlsx } from "@/lib/xlsx-parser";
+import { readZipContents } from "@/lib/zip-contents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 /**
  * Push the verification window forward on every document actually served.
@@ -214,6 +218,84 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
         },
       ),
       shareLink,
+    );
+  }
+
+  if (mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+    const sheets = await parseXlsx(Buffer.from(inputBytes));
+
+    return refreshVerification(
+      NextResponse.json(
+        {
+          type: "xlsx",
+          sheets,
+          watermark: {
+            recipientEmail: shareLink.recipient_email,
+            accessedAt: new Date().toISOString(),
+          },
+        },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Content-Type-Options": "nosniff",
+          },
+        },
+      ),
+      shareLink,
+    );
+  }
+
+  if (IMAGE_MIME_TYPES.has(mimeType)) {
+    // Served as bytes rather than JSON: base64 in a payload would inflate a
+    // 20 MB photo by a third for no benefit. The watermark goes over the top
+    // in the viewer, same as Word and PowerPoint.
+    return refreshVerification(
+      new NextResponse(Buffer.from(inputBytes), {
+        status: 200,
+        headers: {
+          "Content-Type": mimeType,
+          "Content-Disposition": "inline",
+          "Content-Length": inputBytes.byteLength.toString(),
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy": "default-src 'none'",
+        },
+      }),
+      shareLink,
+    );
+  }
+
+  if (mimeType === "application/zip") {
+    const { entries, truncated } = await readZipContents(Buffer.from(inputBytes));
+
+    return refreshVerification(
+      NextResponse.json(
+        {
+          type: "zip",
+          entries,
+          truncated,
+          watermark: {
+            recipientEmail: shareLink.recipient_email,
+            accessedAt: new Date().toISOString(),
+          },
+        },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Content-Type-Options": "nosniff",
+          },
+        },
+      ),
+      shareLink,
+    );
+  }
+
+  // Legacy binary Office formats (.xls, .doc) aren't zip-based and none of the
+  // parsers here read them. Say so plainly instead of failing obscurely.
+  if (mimeType === "application/vnd.ms-excel") {
+    return NextResponse.json(
+      { error: "Older .xls files can't be previewed. Ask the sender to save it as .xlsx." },
+      { status: 415 },
     );
   }
 
