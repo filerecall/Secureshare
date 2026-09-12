@@ -39,6 +39,27 @@ export function buildDocumentS3Key(userId: string, documentId: string): string {
   return `documents/${userId}/${documentId}`;
 }
 
+/**
+ * Confirm a stored key is the one this document is entitled to.
+ *
+ * RLS lets a user update their own documents row, and that includes s3_key.
+ * So a signed-up user could point their own row at someone else's object and
+ * then read it through a share link, because the recipient flow runs as the
+ * service role and trusts whatever key the row carries.
+ *
+ * The key is fully derivable from (user_id, document id), so we never have to
+ * trust the stored value - we recompute it and compare. Anything that doesn't
+ * match has been tampered with and must not be served or deleted.
+ */
+export function isExpectedDocumentS3Key(
+  storedKey: string | null,
+  userId: string,
+  documentId: string,
+): boolean {
+  if (!storedKey) return false;
+  return storedKey === buildDocumentS3Key(userId, documentId);
+}
+
 interface PresignPutOptions {
   key: string;
   contentType: string;

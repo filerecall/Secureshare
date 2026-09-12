@@ -662,11 +662,31 @@ function PdfContent({
   );
 }
 
+/**
+ * react-pdf renders whatever this returns as HTML, so the PDF's own text has
+ * to be escaped first. Without that, a document containing
+ * `<img src=x onerror=...>` executes in our origin the moment the recipient
+ * searches - the sender would be scripting the recipient's browser.
+ */
 function highlightSearchText(text: string, query: string): string {
-  if (!query || query.length < 2) return text;
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escaped})`, "gi");
-  return text.replace(regex, '<mark style="background:#FBBF24;padding:0 1px;border-radius:2px">$1</mark>');
+  const safe = escapeHtml(text);
+  if (!query || query.length < 2) return safe;
+
+  const escapedQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escapedQuery})`, "gi");
+  return safe.replace(
+    regex,
+    '<mark style="background:#FBBF24;padding:0 1px;border-radius:2px">$1</mark>',
+  );
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function WatermarkOverlay({ text, variant = "dark" }: { text: string; variant?: "dark" | "light" }) {

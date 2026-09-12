@@ -87,7 +87,20 @@ export default async function RecipientPage({ params }: PageProps) {
     }
   }
 
-  await markFirstViewed(shareLink);
+  // If this link was unused a moment ago but we lost the race to claim it,
+  // someone else is having the one view. Block rather than serve a second.
+  // (A link already stamped before we looked is the legitimate same-browser
+  // re-render inside the view grant window, which lookupShareLink allowed.)
+  const claimedFirstView = await markFirstViewed(shareLink);
+  if (shareLink.expiry_type === "first_view" && !shareLink.first_viewed_at && !claimedFirstView) {
+    await logAccessEvent(shareLink.id, "blocked");
+    return (
+      <RecipientShell>
+        <BlockedCard reason="already_viewed" />
+      </RecipientShell>
+    );
+  }
+
   await logAccessEvent(shareLink.id, "viewed");
 
   // Consuming a 'first_view' link here would otherwise lock the viewer out of

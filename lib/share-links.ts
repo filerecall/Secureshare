@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isExpectedDocumentS3Key } from "@/lib/s3";
 import { cleanupIfAllLinksInactive } from "@/lib/s3-cleanup";
 import { verifyViewGrant } from "@/lib/view-grant";
 import type { AccessEventType, Database, DocumentRow, ShareLinkRow } from "@/types/database";
@@ -81,6 +82,19 @@ export async function lookupShareLink(
     return { ok: false, reason: "revoked", shareLinkId: shareLink.id };
   }
 
+  // The stored key must be the one this document is entitled to. A user can
+  // edit their own documents row through RLS, so a tampered s3_key pointing at
+  // another tenant's object would otherwise be served by this (service-role)
+  // path. Treat a mismatch as not-found rather than explaining why.
+  if (document.s3_key && !isExpectedDocumentS3Key(document.s3_key, document.user_id, document.id)) {
+    // eslint-disable-next-line no-console
+    console.error("Refusing document with an unexpected s3_key", {
+      documentId: document.id,
+      shareLinkId: shareLink.id,
+    });
+    return { ok: false, reason: "not_found", shareLinkId: shareLink.id };
+  }
+
   return { ok: true, shareLink, document };
 }
 
@@ -88,15 +102,30 @@ export async function lookupShareLink(
  * Stamp first_viewed_at the first time a 'first_view' link is opened.
  * No-op for other expiry types or when already viewed.
  */
-export async function markFirstViewed(shareLink: ShareLinkRow): Promise<void> {
-  if (shareLink.expiry_type !== "first_view") return;
-  if (shareLink.first_viewed_at) return;
+export async function markFirstViewed(shareLink: ShareLinkRow): Promise<boolean> {
+  if (shareLink.expiry_type !== "first_view") return true;
+  if (shareLink.first_viewed_at) return false;
 
   const admin = createAdminClient();
-  await admin
+
+  // `.is("first_viewed_at", null)` makes the database pick the winner. Two
+  // people opening the same single-view link at the same moment would both
+  // read null and both write otherwise - the guard has to be part of the
+  // write, not a check before it. Whoever loses gets no row back.
+  const { data, error } = await admin
     .from("share_links")
     .update({ first_viewed_at: new Date().toISOString() })
-    .eq("id", shareLink.id);
+    .eq("id", shareLink.id)
+    .is("first_viewed_at", null)
+    .select("id");
+
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to stamp first_viewed_at", { shareLinkId: shareLink.id, error });
+    return false;
+  }
+
+  return (data?.length ?? 0) > 0;
 }
 
 /**

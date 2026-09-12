@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteDocumentObject } from "@/lib/s3";
+import { deleteDocumentObject, isExpectedDocumentS3Key } from "@/lib/s3";
 import { VIEW_GRANT_TTL_MS } from "@/lib/view-grant";
 
 export async function cleanupIfAllLinksInactive(documentId: string): Promise<void> {
@@ -13,6 +13,15 @@ export async function cleanupIfAllLinksInactive(documentId: string): Promise<voi
     .maybeSingle();
 
   if (!doc?.s3_key) return;
+
+  // Never delete a key this document isn't entitled to. Without this, a user
+  // who repointed their own row at someone else's object could have us delete
+  // that object for them just by letting their link expire.
+  if (!isExpectedDocumentS3Key(doc.s3_key, doc.user_id, doc.id)) {
+    // eslint-disable-next-line no-console
+    console.error("Refusing to delete an unexpected s3_key", { documentId });
+    return;
+  }
 
   const { data: links } = await admin
     .from("share_links")

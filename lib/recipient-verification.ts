@@ -187,10 +187,19 @@ export async function confirmVerificationCode(
     return { ok: false, reason: "wrong_code" };
   }
 
-  await admin
+  // Consume it in the same write that checks it's unconsumed, so two requests
+  // racing with the same code can't both win. The loser is told the code is
+  // spent rather than being let in.
+  const { data: consumed, error: consumeError } = await admin
     .from("link_verification_codes")
     .update({ consumed_at: new Date().toISOString() })
-    .eq("id", row.id);
+    .eq("id", row.id)
+    .is("consumed_at", null)
+    .select("id");
+
+  if (consumeError || (consumed?.length ?? 0) === 0) {
+    return { ok: false, reason: "no_code" };
+  }
 
   return { ok: true };
 }
